@@ -1,0 +1,59 @@
+// PrintCardFlow — Prisma schema (SQLite)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  basePath  String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  arts      Art[]
+  presets   Preset[]
+}
+
+model Art {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artName     String
+  presetId    String   @default("")
+  ipCode      String   @default("")
+  seqOverride Int      @default(0)
+  material    String   @default("")
+  category    String   @default("")
+  sizesJson   String   @default("") // JSON-serialized SizeEntry[] or ""
+  source      String   @default("")
+  thumbnail   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([presetId])
+}
+
+model Preset {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind            String   @default("custom")
+  name            String
+  description     String   @default("")
+  material        String   @default("")
+  category        String   @default("")
+  sizesJson       String   @default("[]")
+  ipEnabledDefault Boolean @default(false)
+  accent          String   @default("violet")
+  icon            String   @default("Settings2")
+  builtin         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([projectId])
+}
