@@ -76,6 +76,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* PrintCardFlow accent tokens (CSS var consumed by .pcf-accent-* utilities). */
+  --pcf-accent: oklch(0.6 0.18 18);
+  --pcf-accent-fg: oklch(0.985 0 0);
+  --pcf-accent-soft: oklch(0.6 0.18 18 / 0.12);
 }
 
 .dark {
@@ -110,6 +115,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --pcf-accent: oklch(0.7 0.2 18);
+  --pcf-accent-fg: oklch(0.985 0 0);
+  --pcf-accent-soft: oklch(0.7 0.2 18 / 0.18);
 }
 
 @layer base {
@@ -118,5 +127,382 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Global focus-visible ring on every interactive element. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible,
+  summary:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2.5px var(--pcf-accent, oklch(0.7 0.2 18 / 0.55)),
+      0 0 0 4px oklch(1 0 0 / 0.06);
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PrintCardFlow — design-system utilities
+   ──────────────────────────────────────────────────────────── */
+
+@layer utilities {
+  /* Glassmorphism surfaces. */
+  .glass {
+    background-color: color-mix(in oklch, var(--card) 70%, transparent);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+  }
+  .glass-strong {
+    background-color: color-mix(in oklch, var(--card) 90%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  /* Aurora backdrop — slow floating gradient orbs. */
+  .pcf-aurora {
+    background:
+      radial-gradient(circle at 18% 22%, oklch(0.72 0.22 18 / 0.32), transparent 42%),
+      radial-gradient(circle at 82% 14%, oklch(0.65 0.22 330 / 0.28), transparent 44%),
+      radial-gradient(circle at 50% 88%, oklch(0.7 0.18 50 / 0.22), transparent 50%);
+    filter: blur(8px);
+    animation: pcf-float 14s ease-in-out infinite;
+  }
+
+  /* Monospace text with tabular numerals. */
+  .pcf-mono {
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* Dedicated focus ring class (for elements that need explicit focus styling). */
+  .pcf-focus {
+    outline: none;
+  }
+  .pcf-focus:focus-visible {
+    box-shadow:
+      0 0 0 2.5px var(--pcf-accent, oklch(0.7 0.2 18 / 0.55)),
+      0 0 0 4px oklch(1 0 0 / 0.06);
+  }
+
+  /* Custom thin scrollbar with hover affordance. */
+  .scroll-pcf {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+  }
+  .scroll-pcf::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scroll-pcf::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-pcf::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+    border-radius: 9999px;
+  }
+  .scroll-pcf::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  }
+
+  /* Accent palette — each variant sets its own CSS vars. */
+  .pcf-accent {
+    --pcf-accent-soft: color-mix(in oklch, var(--pcf-accent) 14%, transparent);
+  }
+  .pcf-accent-amber {
+    --pcf-accent: oklch(0.75 0.18 70);
+    --pcf-accent-fg: oklch(0.145 0 0);
+    --pcf-accent-soft: oklch(0.75 0.18 70 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.45 0.14 70);
+  }
+  .dark .pcf-accent-amber {
+    color: oklch(0.85 0.16 80);
+  }
+  .pcf-accent-rose {
+    --pcf-accent: oklch(0.7 0.21 18);
+    --pcf-accent-fg: oklch(0.985 0 0);
+    --pcf-accent-soft: oklch(0.7 0.21 18 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.5 0.18 18);
+  }
+  .dark .pcf-accent-rose {
+    color: oklch(0.82 0.18 18);
+  }
+  .pcf-accent-pink {
+    --pcf-accent: oklch(0.72 0.21 350);
+    --pcf-accent-fg: oklch(0.985 0 0);
+    --pcf-accent-soft: oklch(0.72 0.21 350 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.5 0.2 350);
+  }
+  .dark .pcf-accent-pink {
+    color: oklch(0.84 0.18 350);
+  }
+  .pcf-accent-fuchsia {
+    --pcf-accent: oklch(0.68 0.24 325);
+    --pcf-accent-fg: oklch(0.985 0 0);
+    --pcf-accent-soft: oklch(0.68 0.24 325 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.5 0.22 325);
+  }
+  .dark .pcf-accent-fuchsia {
+    color: oklch(0.82 0.2 325);
+  }
+  .pcf-accent-emerald {
+    --pcf-accent: oklch(0.72 0.18 158);
+    --pcf-accent-fg: oklch(0.145 0 0);
+    --pcf-accent-soft: oklch(0.72 0.18 158 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.45 0.14 158);
+  }
+  .dark .pcf-accent-emerald {
+    color: oklch(0.85 0.16 158);
+  }
+  .pcf-accent-violet {
+    --pcf-accent: oklch(0.65 0.2 290);
+    --pcf-accent-fg: oklch(0.985 0 0);
+    --pcf-accent-soft: oklch(0.65 0.2 290 / 0.16);
+    background-color: var(--pcf-accent-soft);
+    color: oklch(0.5 0.2 290);
+  }
+  .dark .pcf-accent-violet {
+    color: oklch(0.82 0.18 290);
+  }
+
+  /* Accent dot — small pulse on hover. */
+  .pcf-accent-dot {
+    transition: transform 0.2s ease;
+  }
+  .pcf-accent-dot:hover {
+    transform: scale(1.25);
+  }
+  /* Accent glow — radial shadow on hover, inherits current --pcf-accent. */
+  .pcf-accent-glow {
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  }
+  .pcf-accent-glow:hover {
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--pcf-accent) 40%, transparent),
+      0 8px 24px -8px color-mix(in oklch, var(--pcf-accent) 45%, transparent);
+  }
+
+  /* Step connector (used both as .pcf-step-connector and as the legacy
+     "pcf-step connector" pair in step-progress.tsx). */
+  .pcf-step,
+  .connector,
+  .pcf-step-connector {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--muted-foreground) 30%, transparent),
+      transparent
+    );
+  }
+
+  /* Divider with a gradient fade. */
+  .pcf-divider {
+    height: 1px;
+    width: 100%;
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--muted-foreground) 28%, transparent),
+      transparent
+    );
+  }
+
+  /* Stat card and stat number. */
+  .pcf-stat-card {
+    padding: 0.75rem;
+    border: 1px solid color-mix(in oklch, var(--muted-foreground) 22%, transparent);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  }
+  .pcf-stat-card:hover {
+    border-color: color-mix(in oklch, var(--muted-foreground) 40%, transparent);
+    background-color: color-mix(in oklch, var(--muted-foreground) 6%, transparent);
+  }
+  .pcf-stat-number {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Toolbar — tinted background + rounded padding. */
+  .pcf-toolbar {
+    background-color: color-mix(in oklch, var(--card) 60%, transparent);
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in oklch, var(--muted-foreground) 16%, transparent);
+  }
+
+  /* Card hover — lift + shadow on hover. */
+  .pcf-card-hover {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+  .pcf-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -10px oklch(0 0 0 / 0.25);
+    border-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+  }
+
+  /* Radial glow (used on hero icon). */
+  .pcf-glow {
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.06),
+      0 16px 60px -20px oklch(0.7 0.22 330 / 0.45);
+  }
+
+  /* Gradient text — emerald → teal. */
+  .pcf-gradient-text {
+    background-image: linear-gradient(
+      90deg,
+      oklch(0.78 0.18 158),
+      oklch(0.75 0.16 200)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* text-wrap: balance for headings. */
+  .pcf-text-balance {
+    text-wrap: balance;
+  }
+
+  /* Shimmer skeleton background. */
+  .pcf-shimmer-bg {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in oklch, var(--muted-foreground) 12%, transparent);
+  }
+  .pcf-shimmer-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--muted-foreground) 14%, transparent),
+      transparent
+    );
+    animation: pcf-shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* Section label — uppercase muted with leading dot. */
+  .pcf-section-label {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .pcf-section-label::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+    display: inline-block;
+  }
+
+  /* Empty-state icon container — gentle float. */
+  .pcf-empty-icon {
+    animation: pcf-empty-float 3.2s ease-in-out infinite;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Keyframes
+   ──────────────────────────────────────────────────────────── */
+@keyframes pcf-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate3d(2%, 1%, 0) scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes pcf-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pcf-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pcf-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes pcf-empty-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pcf-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   prefers-reduced-motion: disable all animations
+   ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pcf-aurora,
+  .pcf-empty-icon,
+  .pcf-shimmer-bg::after {
+    animation: none !important;
   }
 }

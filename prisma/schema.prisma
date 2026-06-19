@@ -57,3 +57,33 @@ model Preset {
 
   @@index([projectId])
 }
+
+model ExportHistory {
+  id              String   @id @default(cuid())
+  kind            String   // "excel" | "zip" | "csv" | "json" | "txt"
+  projectName     String
+  fileName        String
+  fileSize        Int      @default(0)
+  artsCount       Int      @default(0)
+  skuCount        Int      @default(0)
+  presetCount     Int      @default(0)
+  includeManifest Boolean  @default(false)
+  payloadJson     String   @default("") // JSON snapshot of arts+presets for re-download
+  createdAt       DateTime @default(now())
+
+  @@index([kind])
+  @@index([createdAt])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  name        String
+  artsJson    String   @default("[]")
+  presetsJson String   @default("[]")
+  artsCount   Int      @default(0)
+  skuCount    Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([updatedAt])
+}

@@ -1,0 +1,786 @@
+     1→// PrintCardFlow — Step "Preset": core editing step (dnd-kit sortable + bulk actions).
+     2→"use client";
+     3→
+     4→import * as React from "react";
+     5→import {
+     6→  DndContext,
+     7→  PointerSensor,
+     8→  KeyboardSensor,
+     9→  useSensor,
+    10→  useSensors,
+    11→  closestCenter,
+    12→  type DragEndEvent,
+    13→} from "@dnd-kit/core";
+    14→import {
+    15→  SortableContext,
+    16→  useSortable,
+    17→  verticalListSortingStrategy,
+    18→  arrayMove,
+    19→  sortableKeyboardCoordinates,
+    20→} from "@dnd-kit/sortable";
+    21→import { CSS } from "@dnd-kit/utilities";
+    22→import { AnimatePresence, motion } from "framer-motion";
+    23→import {
+    24→  Copy,
+    25→  GripVertical,
+    26→  Layers,
+    27→  Paintbrush,
+    28→  Replace,
+    29→  RotateCcw,
+    30→  Search,
+    31→  Settings2,
+    32→  Sparkles,
+    33→  SquareStack,
+    34→  Trash2,
+    35→  X,
+    36→} from "lucide-react";
+    37→import { Button } from "@/components/ui/button";
+    38→import { Input } from "@/components/ui/input";
+    39→import { Checkbox } from "@/components/ui/checkbox";
+    40→import { Badge } from "@/components/ui/badge";
+    41→import {
+    42→  Select,
+    43→  SelectContent,
+    44→  SelectItem,
+    45→  SelectTrigger,
+    46→  SelectValue,
+    47→} from "@/components/ui/select";
+    48→import {
+    49→  Tooltip,
+    50→  TooltipTrigger,
+    51→  TooltipContent,
+    52→  TooltipProvider,
+    53→} from "@/components/ui/tooltip";
+    54→import {
+    55→  AlertDialog,
+    56→  AlertDialogAction,
+    57→  AlertDialogCancel,
+    58→  AlertDialogContent,
+    59→  AlertDialogDescription,
+    60→  AlertDialogFooter,
+    61→  AlertDialogHeader,
+    62→  AlertDialogTitle,
+    63→  AlertDialogTrigger,
+    64→} from "@/components/ui/alert-dialog";
+    65→import { useWizardStore } from "@/lib/store/wizard-store";
+    66→import { BUILTIN_PRESETS } from "@/lib/domain/presets";
+    67→import { IP_CODES } from "@/lib/domain/ip-codes";
+    68→import { skuStats } from "@/lib/domain/sku-generator";
+    69→import type { Art, IpCode, Preset } from "@/lib/domain/types";
+    70→import { AnimatedNumber } from "@/components/shared/animated-number";
+    71→import { UndoRedoControls } from "@/components/shared/undo-redo-controls";
+    72→import { ValidationBanner } from "@/components/shared/validation-banner";
+    73→import { SaveProjectButton } from "@/components/shared/project-manager";
+    74→import { SearchReplaceDialog as SearchReplaceDialogComp } from "@/components/shared/search-replace-dialog";
+    75→import { EmptyState } from "@/components/shared/empty-state";
+    76→import { cn } from "@/lib/utils";
+    77→import { StepHeading } from "./step-heading";
+    78→import { StepContainer, WizardFooterNav } from "./wizard-footer-nav";
+    79→
+    80→// Grid template for art rows. 5 columns: drag, checkbox, name, preset, ip, sku, actions.
+    81→export const ART_ROW_GRID =
+    82→  "grid items-center gap-2 px-2 py-2 [grid-template-columns:24px_24px_minmax(0,1fr)_180px_120px_minmax(0,1fr)_72px]";
+    83→
+    84→const ACCENT_DOT: Record<string, string> = {
+    85→  amber: "bg-amber-500",
+    86→  rose: "bg-rose-500",
+    87→  pink: "bg-pink-500",
+    88→  fuchsia: "bg-fuchsia-500",
+    89→  emerald: "bg-emerald-500",
+    90→  violet: "bg-violet-500",
+    91→};
+    92→
+    93→const ACCENT_CHIP: Record<string, string> = {
+    94→  amber: "pcf-accent-amber",
+    95→  rose: "pcf-accent-rose",
+    96→  pink: "pcf-accent-pink",
+    97→  fuchsia: "pcf-accent-fuchsia",
+    98→  emerald: "pcf-accent-emerald",
+    99→  violet: "pcf-accent-violet",
+   100→};
+   101→
+   102→function MiniStat({
+   103→  label,
+   104→  value,
+   105→  accent,
+   106→}: {
+   107→  label: string;
+   108→  value: number;
+   109→  accent: string;
+   110→}) {
+   111→  return (
+   112→    <div className={`pcf-stat-card rounded-lg border p-3 ${accent}`}>
+   113→      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+   114→        {label}
+   115→      </div>
+   116→      <div className="pcf-stat-number mt-1 text-xl font-bold tabular-nums">
+   117→        <AnimatedNumber value={value} />
+   118→      </div>
+   119→    </div>
+   120→  );
+   121→}
+   122→
+   123→// ─────────────────────────────────────────────────────────────
+   124→// Sortable art row
+   125→// ─────────────────────────────────────────────────────────────
+   126→function SortableArtRow({ art, presets }: { art: Art; presets: Preset[] }) {
+   127→  const {
+   128→    attributes,
+   129→    listeners,
+   130→    setNodeRef,
+   131→    transform,
+   132→    transition,
+   133→    isDragging,
+   134→  } = useSortable({ id: art.id });
+   135→
+   136→  const toggleSelect = useWizardStore((s) => s.toggleSelect);
+   137→  const updateArt = useWizardStore((s) => s.updateArt);
+   138→  const assignPreset = useWizardStore((s) => s.assignPreset);
+   139→  const setIpCode = useWizardStore((s) => s.setIpCode);
+   140→  const duplicateArt = useWizardStore((s) => s.duplicateArt);
+   141→  const removeArt = useWizardStore((s) => s.removeArt);
+   142→  const pushToast = useWizardStore((s) => s.pushToast);
+   143→
+   144→  const preset = presets.find((p) => p.id === art.presetId);
+   145→  const skus = art.computedSkus ?? [];
+   146→  const previewSku = skus[0]?.sku ?? "—";
+   147→
+   148→  const style = {
+   149→    transform: CSS.Transform.toString(transform),
+   150→    transition,
+   151→  };
+   152→
+   153→  return (
+   154→    <div
+   155→      ref={setNodeRef}
+   156→      style={style}
+   157→      className={cn(
+   158→        ART_ROW_GRID,
+   159→        "rounded-md border bg-background/40 transition-colors hover:bg-accent/30",
+   160→        isDragging && "z-50 shadow-lg ring-2 ring-rose-500/40",
+   161→        art.selected && "ring-1 ring-amber-500/40 bg-amber-500/5",
+   162→      )}
+   163→    >
+   164→      {/* Drag handle */}
+   165→      <button
+   166→        type="button"
+   167→        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+   168→        aria-label="Перетащить для сортировки"
+   169→        {...attributes}
+   170→        {...listeners}
+   171→      >
+   172→        <GripVertical className="size-4" />
+   173→      </button>
+   174→
+   175→      {/* Checkbox */}
+   176→      <Checkbox
+   177→        checked={art.selected}
+   178→        onCheckedChange={() => toggleSelect(art.id)}
+   179→        aria-label={`Выбрать ${art.artName}`}
+   180→      />
+   181→
+   182→      {/* Art name */}
+   183→      <div className="min-w-0">
+   184→        <div className="truncate pcf-mono text-sm font-medium">
+   185→          {art.artName}
+   186→        </div>
+   187→        {skus.length > 1 && (
+   188→          <div className="text-[10px] text-muted-foreground">
+   189→            {skus.length} SKU
+   190→          </div>
+   191→        )}
+   192→      </div>
+   193→
+   194→      {/* Preset select */}
+   195→      <Select
+   196→        value={art.presetId || "__none__"}
+   197→        onValueChange={(v) => assignPreset(art.id, v === "__none__" ? "" : v)}
+   198→      >
+   199→        <SelectTrigger className="h-8 w-full" size="sm">
+   200→          <SelectValue placeholder="Не выбран">
+   201→            {preset && (
+   202→              <span className="flex items-center gap-1.5">
+   203→                <span className={cn("size-2 rounded-full", ACCENT_DOT[preset.accent])} />
+   204→                <span className="truncate">{preset.name}</span>
+   205→              </span>
+   206→            )}
+   207→          </SelectValue>
+   208→        </SelectTrigger>
+   209→        <SelectContent>
+   210→          <SelectItem value="__none__">
+   211→            <span className="text-muted-foreground">Не выбран</span>
+   212→          </SelectItem>
+   213→          {presets.map((p) => (
+   214→            <SelectItem key={p.id} value={p.id}>
+   215→              <span className="flex items-center gap-1.5">
+   216→                <span className={cn("size-2 rounded-full", ACCENT_DOT[p.accent])} />
+   217→                <span>{p.name}</span>
+   218→                <span className="text-[10px] text-muted-foreground">
+   219→                  · {p.material}
+   220→                </span>
+   221→              </span>
+   222→            </SelectItem>
+   223→          ))}
+   224→        </SelectContent>
+   225→      </Select>
+   226→
+   227→      {/* IP select */}
+   228→      <Select
+   229→        value={art.ipCode ?? "__inherit__"}
+   230→        onValueChange={(v) =>
+   231→          setIpCode(art.id, v === "__inherit__" ? null : (v as IpCode))
+   232→        }
+   233→      >
+   234→        <SelectTrigger className="h-8 w-full pcf-mono" size="sm">
+   235→          <SelectValue placeholder="—">
+   236→            {art.ipCode ?? "—"}
+   237→          </SelectValue>
+   238→        </SelectTrigger>
+   239→        <SelectContent>
+   240→          <SelectItem value="__inherit__">
+   241→            <span className="text-muted-foreground">По умолчанию</span>
+   242→          </SelectItem>
+   243→          {IP_CODES.map((c) => (
+   244→            <SelectItem key={c.code} value={c.code}>
+   245→              <span className="pcf-mono">{c.code}</span>
+   246→              <span className="ml-1.5 text-[10px] text-muted-foreground">
+   247→                {c.description}
+   248→              </span>
+   249→            </SelectItem>
+   250→          ))}
+   251→        </SelectContent>
+   252→      </Select>
+   253→
+   254→      {/* SKU preview */}
+   255→      <Tooltip>
+   256→        <TooltipTrigger asChild>
+   257→          <div className="min-w-0 cursor-help truncate pcf-mono text-[11px] text-muted-foreground">
+   258→            {previewSku}
+   259→          </div>
+   260→        </TooltipTrigger>
+   261→        <TooltipContent className="max-w-[420px]">
+   262→          <div className="space-y-0.5 pcf-mono text-[11px]">
+   263→            {skus.length === 0 ? (
+   264→              <div>Нет SKU (пресет не выбран)</div>
+   265→            ) : (
+   266→              skus.map((s, i) => <div key={i}>{s.sku}</div>)
+   267→            )}
+   268→          </div>
+   269→        </TooltipContent>
+   270→      </Tooltip>
+   271→
+   272→      {/* Actions */}
+   273→      <div className="flex items-center justify-end gap-0.5">
+   274→        <Button
+   275→          size="icon"
+   276→          variant="ghost"
+   277→          className="h-7 w-7 text-muted-foreground"
+   278→          onClick={() => {
+   279→            duplicateArt(art.id);
+   280→            pushToast({ variant: "default", title: "Дублировано" });
+   281→          }}
+   282→          aria-label="Дублировать"
+   283→        >
+   284→          <Copy className="size-3.5" />
+   285→        </Button>
+   286→        <Button
+   287→          size="icon"
+   288→          variant="ghost"
+   289→          className="h-7 w-7 text-muted-foreground hover:text-rose-500"
+   290→          onClick={() => {
+   291→            removeArt(art.id);
+   292→            pushToast({ variant: "default", title: "Удалено" });
+   293→          }}
+   294→          aria-label="Удалить"
+   295→        >
+   296→          <Trash2 className="size-3.5" />
+   297→        </Button>
+   298→      </div>
+   299→    </div>
+   300→  );
+   301→}
+   302→
+   303→// ─────────────────────────────────────────────────────────────
+   304→// Main step
+   305→// ─────────────────────────────────────────────────────────────
+   306→export function StepPreset() {
+   307→  const arts = useWizardStore((s) => s.arts);
+   308→  const presets = useWizardStore((s) => s.presets);
+   309→  const recentPresetIds = useWizardStore((s) => s.recentPresetIds);
+   310→  const setArts = useWizardStore((s) => s.setArts);
+   311→  const selectAll = useWizardStore((s) => s.selectAll);
+   312→  const invertSelection = useWizardStore((s) => s.invertSelection);
+   313→  const assignPresetBulk = useWizardStore((s) => s.assignPresetBulk);
+   314→  const setIpCodeBulk = useWizardStore((s) => s.setIpCodeBulk);
+   315→  const duplicateArtsBulk = useWizardStore((s) => s.duplicateArtsBulk);
+   316→  const clearAllPresets = useWizardStore((s) => s.clearAllPresets);
+   317→  const resetAllIpCodes = useWizardStore((s) => s.resetAllIpCodes);
+   318→  const removeSelected = useWizardStore((s) => s.removeSelected);
+   319→  const pushToast = useWizardStore((s) => s.pushToast);
+   320→
+   321→  const [query, setQuery] = React.useState("");
+   322→  const [searchOpen, setSearchOpen] = React.useState(false);
+   323→  const [bulkPreset, setBulkPreset] = React.useState<string>("__none__");
+   324→
+   325→  const sensors = useSensors(
+   326→    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+   327→    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+   328→  );
+   329→
+   330→  const filtered = React.useMemo(() => {
+   331→    const q = query.trim().toLowerCase();
+   332→    if (!q) return arts;
+   333→    return arts.filter((a) => a.artName.toLowerCase().includes(q));
+   334→  }, [arts, query]);
+   335→
+   336→  const selectedArts = arts.filter((a) => a.selected);
+   337→  const selectedIds = selectedArts.map((a) => a.id);
+   338→  const stats = React.useMemo(() => skuStats(arts), [arts]);
+   339→
+   340→  const onDragEnd = (e: DragEndEvent) => {
+   341→    const { active, over } = e;
+   342→    if (!over || active.id === over.id) return;
+   343→    const oldIndex = arts.findIndex((a) => a.id === active.id);
+   344→    const newIndex = arts.findIndex((a) => a.id === over.id);
+   345→    if (oldIndex < 0 || newIndex < 0) return;
+   346→    setArts(arrayMove(arts, oldIndex, newIndex));
+   347→  };
+   348→
+   349→  const onAssignBulkPreset = () => {
+   350→    if (selectedIds.length === 0) {
+   351→      pushToast({ variant: "warning", title: "Нет выбранных артов" });
+   352→      return;
+   353→    }
+   354→    if (bulkPreset === "__none__") {
+   355→      pushToast({ variant: "warning", title: "Выберите пресет" });
+   356→      return;
+   357→    }
+   358→    assignPresetBulk(selectedIds, bulkPreset);
+   359→    const p = presets.find((x) => x.id === bulkPreset);
+   360→    pushToast({
+   361→      variant: "success",
+   362→      title: `Назначен пресет ${p?.name ?? ""}`,
+   363→      description: `${selectedIds.length} артов`,
+   364→    });
+   365→  };
+   366→
+   367→  const recentPresets = React.useMemo(
+   368→    () =>
+   369→      recentPresetIds
+   370→        .map((id) => presets.find((p) => p.id === id))
+   371→        .filter((p): p is Preset => !!p)
+   372→        .slice(0, 5),
+   373→    [recentPresetIds, presets],
+   374→  );
+   375→
+   376→  return (
+   377→    <StepContainer>
+   378→      <StepHeading
+   379→        icon={Layers}
+   380→        title="Назначение пресетов"
+   381→        subtitle="Перетащите арты для сортировки, назначьте пресеты и IP-коды, проверьте дубликаты."
+   382→        accent="violet"
+   383→      />
+   384→
+   385→      <ValidationBanner />
+   386→
+   387→      <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+   388→        {/* Left: toolbar + table */}
+   389→        <div className="space-y-3">
+   390→          {/* Toolbar Row 1 */}
+   391→          <div className="pcf-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-card/50 p-2">
+   392→            <div className="relative min-w-[200px] flex-1">
+   393→              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+   394→              <Input
+   395→                placeholder="Поиск арта…"
+   396→                value={query}
+   397→                onChange={(e) => setQuery(e.target.value)}
+   398→                className="h-8 pl-8"
+   399→              />
+   400→              {query && (
+   401→                <button
+   402→                  onClick={() => setQuery("")}
+   403→                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   404→                  aria-label="Очистить"
+   405→                >
+   406→                  <X className="size-3.5" />
+   407→                </button>
+   408→              )}
+   409→            </div>
+   410→            <UndoRedoControls />
+   411→            <SaveProjectButton />
+   412→            <Button
+   413→              variant="outline"
+   414→              size="sm"
+   415→              className="h-8"
+   416→              onClick={() => setSearchOpen(true)}
+   417→            >
+   418→              <Replace className="size-3.5" />
+   419→              <span className="hidden sm:inline">Поиск и замена</span>
+   420→            </Button>
+   421→          </div>
+   422→
+   423→          {/* Toolbar Row 2: selection + edit */}
+   424→          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/50 p-2">
+   425→            {/* Selection group */}
+   426→            <div className="flex items-center gap-1">
+   427→              <span className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">
+   428→                Выбор
+   429→              </span>
+   430→              <Button
+   431→                variant="ghost"
+   432→                size="sm"
+   433→                className="h-7"
+   434→                onClick={() => selectAll(true)}
+   435→              >
+   436→                Все
+   437→              </Button>
+   438→              <Button
+   439→                variant="ghost"
+   440→                size="sm"
+   441→                className="h-7"
+   442→                onClick={() => selectAll(false)}
+   443→              >
+   444→                Снять
+   445→              </Button>
+   446→              <Button
+   447→                variant="ghost"
+   448→                size="sm"
+   449→                className="h-7"
+   450→                onClick={() => invertSelection()}
+   451→              >
+   452→                Инверт.
+   453→              </Button>
+   454→              <Select value={bulkPreset} onValueChange={setBulkPreset}>
+   455→                <SelectTrigger size="sm" className="h-7 w-[140px]">
+   456→                  <SelectValue placeholder="по пресету" />
+   457→                </SelectTrigger>
+   458→                <SelectContent>
+   459→                  <SelectItem value="__none__">—</SelectItem>
+   460→                  {presets.map((p) => (
+   461→                    <SelectItem key={p.id} value={p.id}>
+   462→                      {p.name}
+   463→                    </SelectItem>
+   464→                  ))}
+   465→                </SelectContent>
+   466→              </Select>
+   467→              <Button
+   468→                variant="outline"
+   469→                size="sm"
+   470→                className="h-7"
+   471→                onClick={() => {
+   472→                  if (bulkPreset === "__none__") return;
+   473→                  const ids = arts
+   474→                    .filter((a) => a.presetId === bulkPreset)
+   475→                    .map((a) => a.id);
+   476→                  if (ids.length === 0) {
+   477→                    selectAll(false);
+   478→                  } else {
+   479→                    selectAll(false);
+   480→                    for (const id of ids) {
+   481→                      const a = arts.find((x) => x.id === id);
+   482→                      if (a && !a.selected) {
+   483→                        useWizardStore.getState().toggleSelect(id);
+   484→                      }
+   485→                    }
+   486→                  }
+   487→                }}
+   488→              >
+   489→                Выбрать
+   490→              </Button>
+   491→            </div>
+   492→
+   493→            <div className="ml-auto flex flex-wrap items-center gap-1">
+   494→              <span className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">
+   495→                Действие
+   496→              </span>
+   497→              <Button
+   498→                variant="outline"
+   499→                size="sm"
+   500→                className="h-7"
+   501→                disabled={selectedIds.length === 0}
+   502→                onClick={() => {
+   503→                  duplicateArtsBulk(selectedIds);
+   504→                  pushToast({
+   505→                    variant: "success",
+   506→                    title: `Дублировано: ${selectedIds.length}`,
+   507→                  });
+   508→                }}
+   509→              >
+   510→                <Copy className="size-3.5" />
+   511→                Дублировать {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+   512→              </Button>
+   513→              <Button
+   514→                variant="outline"
+   515→                size="sm"
+   516→                className="h-7"
+   517→                onClick={() => {
+   518→                  resetAllIpCodes();
+   519→                  pushToast({ variant: "default", title: "IP-коды сброшены" });
+   520→                }}
+   521→              >
+   522→                <RotateCcw className="size-3.5" />
+   523→                <span className="hidden md:inline">Сбросить IP</span>
+   524→              </Button>
+   525→              <AlertDialog>
+   526→                <AlertDialogTrigger asChild>
+   527→                  <Button variant="outline" size="sm" className="h-7">
+   528→                    <Paintbrush className="size-3.5" />
+   529→                    <span className="hidden md:inline">Очистить пресеты</span>
+   530→                  </Button>
+   531→                </AlertDialogTrigger>
+   532→                <AlertDialogContent>
+   533→                  <AlertDialogHeader>
+   534→                    <AlertDialogTitle>Очистить все пресеты?</AlertDialogTitle>
+   535→                    <AlertDialogDescription>
+   536→                      У всех артов будет снято назначение пресета. Действие можно отменить (Ctrl+Z).
+   537→                    </AlertDialogDescription>
+   538→                  </AlertDialogHeader>
+   539→                  <AlertDialogFooter>
+   540→                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+   541→                    <AlertDialogAction
+   542→                      onClick={() => {
+   543→                        clearAllPresets();
+   544→                        pushToast({ variant: "default", title: "Пресеты очищены" });
+   545→                      }}
+   546→                    >
+   547→                      Да, очистить
+   548→                    </AlertDialogAction>
+   549→                  </AlertDialogFooter>
+   550→                </AlertDialogContent>
+   551→              </AlertDialog>
+   552→              <Button
+   553→                variant="outline"
+   554→                size="sm"
+   555→                className="h-7 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+   556→                disabled={selectedIds.length === 0}
+   557→                onClick={() => {
+   558→                  removeSelected();
+   559→                  pushToast({
+   560→                    variant: "default",
+   561→                    title: `Удалено: ${selectedIds.length}`,
+   562→                  });
+   563→                }}
+   564→              >
+   565→                <Trash2 className="size-3.5" />
+   566→                Удалить {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+   567→              </Button>
+   568→            </div>
+   569→          </div>
+   570→
+   571→          {/* Bulk IP bar */}
+   572→          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2">
+   573→            <span className="px-1 text-[11px] font-semibold uppercase text-violet-600 dark:text-violet-400">
+   574→              IP для выбранных
+   575→            </span>
+   576→            <Select
+   577→              value="__none__"
+   578→              onValueChange={(v) => {
+   579→                if (selectedIds.length === 0) {
+   580→                  pushToast({ variant: "warning", title: "Нет выбранных артов" });
+   581→                  return;
+   582→                }
+   583→                setIpCodeBulk(selectedIds, v === "__null__" ? null : (v as IpCode));
+   584→                pushToast({
+   585→                  variant: "success",
+   586→                  title: `IP-код назначен`,
+   587→                  description: `${selectedIds.length} артов`,
+   588→                });
+   589→              }}
+   590→            >
+   591→              <SelectTrigger size="sm" className="h-7 w-[140px]">
+   592→                <SelectValue placeholder="Назначить IP" />
+   593→              </SelectTrigger>
+   594→              <SelectContent>
+   595→                <SelectItem value="__null__">
+   596→                  <span className="text-muted-foreground">По умолчанию</span>
+   597→                </SelectItem>
+   598→                {IP_CODES.map((c) => (
+   599→                  <SelectItem key={c.code} value={c.code}>
+   600→                    <span className="pcf-mono">{c.code}</span>
+   601→                    <span className="ml-1.5 text-[10px] text-muted-foreground">
+   602→                      {c.description}
+   603→                    </span>
+   604→                  </SelectItem>
+   605→                ))}
+   606→              </SelectContent>
+   607→            </Select>
+   608→            <Button
+   609→              size="sm"
+   610→              variant="outline"
+   611→              className="h-7"
+   612→              onClick={onAssignBulkPreset}
+   613→            >
+   614→              Назначить пресет выбранным
+   615→            </Button>
+   616→          </div>
+   617→
+   618→          {/* Table */}
+   619→          <div className="rounded-xl border bg-card/40">
+   620→            {/* Header row */}
+   621→            <div className={cn(ART_ROW_GRID, "border-b bg-muted/30 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+   622→              <span />
+   623→              <span />
+   624→              <span>Имя арта</span>
+   625→              <span>Пресет</span>
+   626→              <span>IP</span>
+   627→              <span>SKU (первый)</span>
+   628→              <span className="text-right">Действия</span>
+   629→            </div>
+   630→
+   631→            {filtered.length === 0 ? (
+   632→              <EmptyState
+   633→                icon={Layers}
+   634→                title={arts.length === 0 ? "Список артов пуст" : "Ничего не найдено"}
+   635→                description={
+   636→                  arts.length === 0
+   637→                    ? "Вернитесь на шаг «Папка» и отсканируйте папку."
+   638→                    : "Измените поисковый запрос."
+   639→                }
+   640→                accent="violet"
+   641→                className="m-3"
+   642→              />
+   643→            ) : (
+   644→              <TooltipProvider delayDuration={300}>
+   645→                <DndContext
+   646→                  sensors={sensors}
+   647→                  collisionDetection={closestCenter}
+   648→                  onDragEnd={onDragEnd}
+   649→                >
+   650→                  <SortableContext
+   651→                    items={filtered.map((a) => a.id)}
+   652→                    strategy={verticalListSortingStrategy}
+   653→                  >
+   654→                    <div className="max-h-[55vh] space-y-1 overflow-y-auto scroll-pcf p-1">
+   655→                      <AnimatePresence>
+   656→                        {filtered.map((art) => (
+   657→                          <motion.div
+   658→                            key={art.id}
+   659→                            layout
+   660→                            initial={{ opacity: 0, y: 6 }}
+   661→                            animate={{ opacity: 1, y: 0 }}
+   662→                            exit={{ opacity: 0, x: -20 }}
+   663→                            transition={{ duration: 0.15 }}
+   664→                          >
+   665→                            <SortableArtRow art={art} presets={presets} />
+   666→                          </motion.div>
+   667→                        ))}
+   668→                      </AnimatePresence>
+   669→                    </div>
+   670→                  </SortableContext>
+   671→                </DndContext>
+   672→              </TooltipProvider>
+   673→            )}
+   674→          </div>
+   675→        </div>
+   676→
+   677→        {/* Right: stats + recent + palette */}
+   678→        <aside className="space-y-3">
+   679→          {/* Stats */}
+   680→          <div className="grid grid-cols-3 gap-2">
+   681→            <MiniStat label="Артов" value={stats.arts} accent="pcf-accent-violet" />
+   682→            <MiniStat label="С пресетом" value={stats.assigned} accent="pcf-accent-emerald" />
+   683→            <MiniStat label="SKU" value={stats.totalSkus} accent="pcf-accent-amber" />
+   684→          </div>
+   685→
+   686→          {/* Recent presets */}
+   687→          {recentPresets.length > 0 && (
+   688→            <div className="rounded-lg border bg-card/50 p-3">
+   689→              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+   690→                <Sparkles className="size-3" />
+   691→                Недавние пресеты
+   692→              </div>
+   693→              <div className="flex flex-wrap gap-1.5">
+   694→                {recentPresets.map((p) => (
+   695→                  <button
+   696→                    key={p.id}
+   697→                    onClick={() => {
+   698→                      if (selectedIds.length === 0) {
+   699→                        pushToast({
+   700→                          variant: "warning",
+   701→                          title: "Сначала выберите арты",
+   702→                        });
+   703→                        return;
+   704→                      }
+   705→                      assignPresetBulk(selectedIds, p.id);
+   706→                      pushToast({
+   707→                        variant: "success",
+   708→                        title: `Назначен: ${p.name}`,
+   709→                        description: `${selectedIds.length} артов`,
+   710→                      });
+   711→                    }}
+   712→                    className={cn(
+   713→                      "flex items-center gap-1.5 rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-xs transition-all hover:border-foreground/40",
+   714→                      ACCENT_CHIP[p.accent],
+   715→                    )}
+   716→                  >
+   717→                    <span className={cn("size-1.5 rounded-full pcf-accent-dot", ACCENT_DOT[p.accent])} />
+   718→                    {p.name}
+   719→                  </button>
+   720→                ))}
+   721→              </div>
+   722→            </div>
+   723→          )}
+   724→
+   725→          {/* Preset palette */}
+   726→          <div className="rounded-lg border bg-card/50 p-3">
+   727→            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+   728→              <SquareStack className="size-3" />
+   729→              Палитра пресетов
+   730→            </div>
+   731→            <div className="space-y-1.5">
+   732→              {presets.map((p) => (
+   733→                <button
+   734→                  key={p.id}
+   735→                  onClick={() => {
+   736→                    if (selectedIds.length === 0) {
+   737→                      pushToast({
+   738→                        variant: "warning",
+   739→                        title: "Сначала выберите арты",
+   740→                      });
+   741→                      return;
+   742→                    }
+   743→                    assignPresetBulk(selectedIds, p.id);
+   744→                    pushToast({
+   745→                      variant: "success",
+   746→                      title: `Назначен: ${p.name}`,
+   747→                      description: `${selectedIds.length} артов`,
+   748→                    });
+   749→                  }}
+   750→                  className={cn(
+   751→                    "group flex w-full items-center gap-2 rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5 text-left text-xs transition-all hover:border-foreground/40 hover:bg-accent/30",
+   752→                    ACCENT_CHIP[p.accent],
+   753→                  )}
+   754→                >
+   755→                  <span className="relative flex size-2 shrink-0">
+   756→                    <span
+   757→                      className={cn(
+   758→                        "absolute inline-flex size-full rounded-full opacity-60",
+   759→                        ACCENT_DOT[p.accent],
+   760→                      )}
+   761→                      style={{ animation: "pulse 2s infinite" }}
+   762→                    />
+   763→                    <span className={cn("relative inline-flex size-2 rounded-full", ACCENT_DOT[p.accent])} />
+   764→                  </span>
+   765→                  <span className="flex-1 truncate font-medium">{p.name}</span>
+   766→                  <span className="text-[10px] text-muted-foreground">
+   767→                    {p.category}
+   768→                  </span>
+   769→                </button>
+   770→              ))}
+   771→            </div>
+   772→            <Button variant="ghost" size="sm" className="mt-2 w-full text-xs" disabled>
+   773→              <Settings2 className="size-3" />
+   774→              Галерея
+   775→            </Button>
+   776→          </div>
+   777→        </aside>
+   778→      </div>
+   779→
+   780→      <WizardFooterNav prevLabel="К сканированию" nextLabel="К просмотру" />
+   781→
+   782→      <SearchReplaceDialogComp open={searchOpen} onOpenChange={setSearchOpen} />
+   783→    </StepContainer>
+   784→  );
+   785→}
+   786→
