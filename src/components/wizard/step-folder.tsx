@@ -31,6 +31,12 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { useWizardStore } from "@/lib/store/wizard-store";
 import { DEMO_BASE_PATHS } from "@/lib/domain/demo-data";
 import type { Art } from "@/lib/domain/types";
+import {
+  isElectron,
+  scanFolder as electronScan,
+  pickFolder as electronPick,
+} from "@/lib/electron/electron-client";
+import { Folder } from "lucide-react";
 import { StepHeading } from "./step-heading";
 import { StepContainer, WizardFooterNav } from "./wizard-footer-nav";
 
@@ -49,8 +55,9 @@ export function StepFolder() {
   const pushToast = useWizardStore((s) => s.pushToast);
   const project = useWizardStore((s) => s.project);
 
+  const [electronMode] = React.useState(() => isElectron());
   const [basePath, setBasePath] = React.useState(
-    project?.basePath || DEMO_BASE_PATHS[0],
+    project?.basePath || (electronMode ? "" : DEMO_BASE_PATHS[0]),
   );
   const [count, setCount] = React.useState(30);
   const [scanning, setScanning] = React.useState(false);
@@ -62,9 +69,24 @@ export function StepFolder() {
   const [colsOpen, setColsOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const onPickFolder = async () => {
+    const picked = await electronPick();
+    if (picked) setBasePath(picked);
+  };
+
   const onScan = async () => {
     setScanning(true);
     try {
+      if (electronMode) {
+        const result = await electronScan(basePath, count);
+        if (!result.ok) throw new Error(result.error || "scan failed");
+        const arts = result.arts;
+        setArts(arts);
+        startProject(project?.name || "Новый проект", basePath);
+        pushToast({ variant: "success", title: "Папка отсканирована", description: `Найдено: ${arts.length}` });
+        next();
+        return;
+      }
       const res = await fetch("/api/scan-folder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,29 +198,47 @@ export function StepFolder() {
           <div className="rounded-xl border bg-card/50 p-4 space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="folder-path">Путь к папке</Label>
-              <Input
-                id="folder-path"
-                className="pcf-mono"
-                value={basePath}
-                onChange={(e) => setBasePath(e.target.value)}
-                placeholder="/Users/designer/PrintCards/2026_Spring"
-              />
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {DEMO_BASE_PATHS.map((p) => (
-                  <button
-                    key={p}
+              <div className="flex gap-2">
+                <Input
+                  id="folder-path"
+                  className="pcf-mono flex-1"
+                  value={basePath}
+                  onChange={(e) => setBasePath(e.target.value)}
+                  placeholder="/Users/designer/PrintCards/2026_Spring"
+                />
+                {electronMode && (
+                  <Button
                     type="button"
-                    onClick={() => setBasePath(p)}
-                    className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                    variant="outline"
+                    size="icon"
+                    onClick={onPickFolder}
+                    aria-label="Выбрать папку"
+                    className="pcf-focus shrink-0"
+                  >
+                    <Folder className="size-4" />
+                  </Button>
+                )}
+              </div>
+              {!electronMode && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {DEMO_BASE_PATHS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setBasePath(p)}
+                      className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
                   >
                     {p.split("/").pop() ?? p}
                   </button>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="folder-count">Количество артов (демо)</Label>
+              <Label htmlFor="folder-count">
+                {electronMode ? "Максимум артов" : "Количество артов (демо)"}
+              </Label>
               <Select
                 value={String(count)}
                 onValueChange={(v) => setCount(Number(v))}
