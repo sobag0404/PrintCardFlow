@@ -24,6 +24,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
 
+      - name: Install Visual C++ Build Tools
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install dependencies (skip postinstall)
         run: bun install --ignore-scripts
 
