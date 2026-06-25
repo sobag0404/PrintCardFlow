@@ -17,8 +17,13 @@ node_modules
 /.next/
 /out/
 
-# production
-/build
+# production build output
+/dist/
+# but keep app icons in build/
+!/build
+/build/*
+!/build/icon.ico
+!/build/icon.png
 
 # misc
 .DS_Store

@@ -18,8 +18,7 @@
     "build:next": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "build:electron": "npm run build:next && electron-builder",
     "build:electron:win": "npm run build:next && electron-builder --win --x64",
-    "build:electron:linux": "npm run build:next && electron-builder --linux",
-    "dist": "npm run build:electron",
+    "dist": "npm run build:electron:win",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -138,12 +137,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "PrintCardFlow",
       "language": "1049"
-    },
-    "linux": {
-      "target": [{ "target": "AppImage", "arch": ["x64"] }],
-      "icon": "build/icon.png",
-      "category": "Graphics",
-      "artifactName": "PrintCardFlow-${version}.${ext}"
     },
     "publish": {
       "provider": "github",
