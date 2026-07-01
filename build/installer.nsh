@@ -17,6 +17,7 @@
 !macroend
 
 !macro customRemoveFiles
+  SetOutPath "$TEMP"
   !insertmacro killPrintCardFlow
   RMDir /r "$INSTDIR"
 !macroend
