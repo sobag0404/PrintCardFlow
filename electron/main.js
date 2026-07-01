@@ -12,7 +12,6 @@ const enableAutoUpdater = !isDev && process.env.PRINTCARDFLOW_AUTO_UPDATE === "1
 const debugServerLogs = isDev || process.env.PRINTCARDFLOW_SERVER_LOGS === "1";
 
 if (!isDev) {
-  app.disableHardwareAcceleration();
   app.commandLine.appendSwitch("disable-component-update");
   app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion,HardwareMediaKeyHandling,MediaRouter");
   if (!enableAutoUpdater) app.commandLine.appendSwitch("disable-background-networking");
