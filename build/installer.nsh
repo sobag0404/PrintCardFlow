@@ -1,6 +1,6 @@
 !macro killPrintCardFlow
   DetailPrint "Stopping PrintCardFlow..."
-  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM PrintCardFlow.exe'
+  ExecWait '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "Stop-Process -Name PrintCardFlow -Force -ErrorAction SilentlyContinue"'
   Sleep 1500
 !macroend
 

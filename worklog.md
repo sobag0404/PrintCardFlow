@@ -27,6 +27,7 @@
 - Fixed uninstall hook placement: process termination now runs in `customUnInit` and `customRemoveFiles` before file removal.
 - Switched NSIS process termination from `nsExec` to direct `ExecWait "$SYSDIR\taskkill.exe" /F /T /IM PrintCardFlow.exe`.
 - Added `customCheckAppRunning` so silent uninstall kills the app before Electron Builder's built-in running-process check.
+- Replaced `taskkill` with PowerShell `Stop-Process -Name PrintCardFlow`, which works in the target Windows environment.
 - Enabled `deleteAppDataOnUninstall` so uninstall removes app data.
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 
