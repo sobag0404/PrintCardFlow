@@ -98,7 +98,7 @@ export default function Home() {
       <AppHeader />
 
       <main
-        className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-3 sm:px-6"
+        className="mx-auto flex w-full max-w-none flex-1 flex-col px-3 sm:px-6 2xl:px-10"
         aria-live="polite"
       >
         {lowPower ? (

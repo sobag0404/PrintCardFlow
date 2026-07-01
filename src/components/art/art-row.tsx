@@ -165,9 +165,6 @@ export function ArtRow({ art, presets, disableDrag }: ArtRowProps) {
           {IP_CODES.map((c) => (
             <SelectItem key={c.code} value={c.code}>
               <span className="pcf-mono">{c.code}</span>
-              <span className="ml-1.5 text-[10px] text-muted-foreground">
-                {c.description}
-              </span>
             </SelectItem>
           ))}
         </SelectContent>

@@ -42,6 +42,29 @@ export function buildSku(parts: SkuParts): string {
   return segments.filter(Boolean).join(SKU_SEPARATOR);
 }
 
+const PRODUCT_TOKEN_PATTERN =
+  /(дорожк[а-я]*|подушк[а-я]*|наволочк[а-я]*|одеял[а-я]*|плед[а-я]*)/giu;
+
+function presetProductWord(preset: Preset | null): string {
+  if (!preset) return "";
+  if (preset.kind.startsWith("pillow") || /подушк/i.test(preset.category)) {
+    return "подушка";
+  }
+  if (preset.kind === "blanket" || /одеял/i.test(preset.category)) {
+    return "одеяло";
+  }
+  if (/наволоч/i.test(preset.category)) return "наволочка";
+  if (/плед/i.test(preset.category)) return "плед";
+  return "";
+}
+
+/** Replace an old product word in the art name with the product implied by the preset. */
+export function skuArtNameForPreset(artName: string, preset: Preset | null): string {
+  const productWord = presetProductWord(preset);
+  if (!productWord) return artName;
+  return artName.replace(PRODUCT_TOKEN_PATTERN, productWord);
+}
+
 /** Resolve the effective values for an art given its preset (or overrides). */
 export function resolveArtFields(
   art: Art,
@@ -93,6 +116,7 @@ export function generateSkus(arts: Art[], presets: Preset[]): GeneratedSku[] {
   for (const art of arts) {
     const preset = presetMap.get(art.presetId) ?? null;
     const { material, category, sizes, ip } = resolveArtFields(art, preset);
+    const skuArtName = skuArtNameForPreset(art.artName, preset);
     for (const size of sizes) {
       const key = seqScopeKey(art.presetId || "none", size.seqScope);
       let seq: number;
@@ -105,7 +129,7 @@ export function generateSkus(arts: Art[], presets: Preset[]): GeneratedSku[] {
         seq = next;
       }
       const sku = buildSku({
-        artName: art.artName,
+        artName: skuArtName,
         seqNum: seq,
         size: size.label,
         material,
@@ -114,7 +138,7 @@ export function generateSkus(arts: Art[], presets: Preset[]): GeneratedSku[] {
       });
       out.push({
         artId: art.id,
-        artName: art.artName,
+        artName: skuArtName,
         seqNum: seq,
         size: size.label,
         material,

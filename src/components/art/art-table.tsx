@@ -77,6 +77,8 @@ export function ArtTable({
 
   const visibleSelected = filtered.filter((a) => a.selected).length;
   const allVisibleSelected = filtered.length > 0 && visibleSelected === filtered.length;
+  const visibleSelectionState =
+    allVisibleSelected ? true : visibleSelected > 0 ? "indeterminate" : false;
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
@@ -153,7 +155,7 @@ export function ArtTable({
       >
         <span />
         <Checkbox
-          checked={allVisibleSelected}
+          checked={visibleSelectionState}
           onCheckedChange={handleHeaderCheck}
           aria-label="Выбрать все видимые"
           className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"

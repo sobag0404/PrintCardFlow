@@ -25,6 +25,8 @@ import {
   GripVertical,
   Layers,
   Paintbrush,
+  Pencil,
+  Plus,
   Replace,
   RotateCcw,
   Search,
@@ -63,7 +65,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useWizardStore } from "@/lib/store/wizard-store";
-import { BUILTIN_PRESETS } from "@/lib/domain/presets";
 import { IP_CODES } from "@/lib/domain/ip-codes";
 import { skuStats } from "@/lib/domain/sku-generator";
 import type { Art, IpCode, Preset } from "@/lib/domain/types";
@@ -73,6 +74,8 @@ import { ValidationBanner } from "@/components/shared/validation-banner";
 import { SaveProjectButton } from "@/components/shared/project-manager";
 import { SearchReplaceDialog as SearchReplaceDialogComp } from "@/components/shared/search-replace-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PresetEditor } from "@/components/preset/preset-editor";
+import { PresetGallery } from "@/components/preset/preset-gallery";
 import { cn } from "@/lib/utils";
 import { StepHeading } from "./step-heading";
 import { StepContainer, WizardFooterNav } from "./wizard-footer-nav";
@@ -134,7 +137,6 @@ function SortableArtRow({ art, presets }: { art: Art; presets: Preset[] }) {
   } = useSortable({ id: art.id });
 
   const toggleSelect = useWizardStore((s) => s.toggleSelect);
-  const updateArt = useWizardStore((s) => s.updateArt);
   const assignPreset = useWizardStore((s) => s.assignPreset);
   const setIpCode = useWizardStore((s) => s.setIpCode);
   const duplicateArt = useWizardStore((s) => s.duplicateArt);
@@ -243,9 +245,6 @@ function SortableArtRow({ art, presets }: { art: Art; presets: Preset[] }) {
           {IP_CODES.map((c) => (
             <SelectItem key={c.code} value={c.code}>
               <span className="pcf-mono">{c.code}</span>
-              <span className="ml-1.5 text-[10px] text-muted-foreground">
-                {c.description}
-              </span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -309,6 +308,7 @@ export function StepPreset() {
   const recentPresetIds = useWizardStore((s) => s.recentPresetIds);
   const setArts = useWizardStore((s) => s.setArts);
   const selectAll = useWizardStore((s) => s.selectAll);
+  const selectMany = useWizardStore((s) => s.selectMany);
   const invertSelection = useWizardStore((s) => s.invertSelection);
   const assignPresetBulk = useWizardStore((s) => s.assignPresetBulk);
   const setIpCodeBulk = useWizardStore((s) => s.setIpCodeBulk);
@@ -321,6 +321,9 @@ export function StepPreset() {
   const [query, setQuery] = React.useState("");
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [bulkPreset, setBulkPreset] = React.useState<string>("__none__");
+  const [presetEditorOpen, setPresetEditorOpen] = React.useState(false);
+  const [presetGalleryOpen, setPresetGalleryOpen] = React.useState(false);
+  const [editingPreset, setEditingPreset] = React.useState<Preset | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -335,6 +338,13 @@ export function StepPreset() {
 
   const selectedArts = arts.filter((a) => a.selected);
   const selectedIds = selectedArts.map((a) => a.id);
+  const visibleSelectedCount = filtered.filter((a) => a.selected).length;
+  const visibleSelectionState =
+    filtered.length > 0 && visibleSelectedCount === filtered.length
+      ? true
+      : visibleSelectedCount > 0
+        ? "indeterminate"
+        : false;
   const stats = React.useMemo(() => skuStats(arts), [arts]);
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -364,6 +374,16 @@ export function StepPreset() {
     });
   };
 
+  const openCreatePreset = () => {
+    setEditingPreset(null);
+    setPresetEditorOpen(true);
+  };
+
+  const openEditPreset = (preset: Preset) => {
+    setEditingPreset(preset);
+    setPresetEditorOpen(true);
+  };
+
   const recentPresets = React.useMemo(
     () =>
       recentPresetIds
@@ -384,9 +404,9 @@ export function StepPreset() {
 
       <ValidationBanner />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Left: toolbar + table */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {/* Toolbar Row 1 */}
           <div className="pcf-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-card/50 p-2">
             <div className="relative min-w-[200px] flex-1">
@@ -598,9 +618,6 @@ export function StepPreset() {
                 {IP_CODES.map((c) => (
                   <SelectItem key={c.code} value={c.code}>
                     <span className="pcf-mono">{c.code}</span>
-                    <span className="ml-1.5 text-[10px] text-muted-foreground">
-                      {c.description}
-                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -616,11 +633,18 @@ export function StepPreset() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border bg-card/40">
+          <div className="min-w-0 rounded-xl border bg-card/40">
             {/* Header row */}
             <div className={cn(ART_ROW_GRID, "border-b bg-muted/30 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground")}>
               <span />
-              <span />
+              <Checkbox
+                checked={visibleSelectionState}
+                onCheckedChange={(checked) =>
+                  selectMany(filtered.map((a) => a.id), checked === true)
+                }
+                aria-label="Выбрать все видимые арты"
+                className="data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
+              />
               <span>Имя арта</span>
               <span>Пресет</span>
               <span>IP</span>
@@ -727,49 +751,78 @@ export function StepPreset() {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <SquareStack className="size-3" />
               Палитра пресетов
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto h-7 px-2 text-xs"
+                onClick={openCreatePreset}
+              >
+                <Plus className="size-3" />
+                Создать
+              </Button>
             </div>
             <div className="space-y-1.5">
               {presets.map((p) => (
-                <button
+                <div
                   key={p.id}
-                  onClick={() => {
-                    if (selectedIds.length === 0) {
-                      pushToast({
-                        variant: "warning",
-                        title: "Сначала выберите арты",
-                      });
-                      return;
-                    }
-                    assignPresetBulk(selectedIds, p.id);
-                    pushToast({
-                      variant: "success",
-                      title: `Назначен: ${p.name}`,
-                      description: `${selectedIds.length} артов`,
-                    });
-                  }}
                   className={cn(
-                    "group flex w-full items-center gap-2 rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5 text-left text-xs transition-all hover:border-foreground/40 hover:bg-accent/30",
+                    "group flex w-full items-center gap-1 rounded-md border border-border/60 bg-background/40 px-2 py-1.5 text-left text-xs transition-all hover:border-foreground/40 hover:bg-accent/30",
                     ACCENT_CHIP[p.accent],
                   )}
                 >
-                  <span className="relative flex size-2 shrink-0">
-                    <span
-                      className={cn(
-                        "absolute inline-flex size-full rounded-full opacity-60",
-                        ACCENT_DOT[p.accent],
-                      )}
-                      style={{ animation: "pulse 2s infinite" }}
-                    />
-                    <span className={cn("relative inline-flex size-2 rounded-full", ACCENT_DOT[p.accent])} />
-                  </span>
-                  <span className="flex-1 truncate font-medium">{p.name}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {p.category}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedIds.length === 0) {
+                        pushToast({
+                          variant: "warning",
+                          title: "Сначала выберите арты",
+                        });
+                        return;
+                      }
+                      assignPresetBulk(selectedIds, p.id);
+                      pushToast({
+                        variant: "success",
+                        title: `Назначен: ${p.name}`,
+                        description: `${selectedIds.length} артов`,
+                      });
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                  >
+                    <span className="relative flex size-2 shrink-0">
+                      <span
+                        className={cn(
+                          "absolute inline-flex size-full rounded-full opacity-60",
+                          ACCENT_DOT[p.accent],
+                        )}
+                        style={{ animation: "pulse 2s infinite" }}
+                      />
+                      <span className={cn("relative inline-flex size-2 rounded-full", ACCENT_DOT[p.accent])} />
+                    </span>
+                    <span className="flex-1 truncate font-medium">{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {p.category}
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0 opacity-60 hover:opacity-100"
+                    onClick={() => openEditPreset(p)}
+                    aria-label={`Редактировать ${p.name}`}
+                  >
+                    <Pencil className="size-3" />
+                  </Button>
+                </div>
               ))}
             </div>
-            <Button variant="ghost" size="sm" className="mt-2 w-full text-xs" disabled>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 w-full text-xs"
+              onClick={() => setPresetGalleryOpen(true)}
+            >
               <Settings2 className="size-3" />
               Галерея
             </Button>
@@ -780,6 +833,12 @@ export function StepPreset() {
       <WizardFooterNav prevLabel="К сканированию" nextLabel="К просмотру" />
 
       <SearchReplaceDialogComp open={searchOpen} onOpenChange={setSearchOpen} />
+      <PresetEditor
+        open={presetEditorOpen}
+        onOpenChange={setPresetEditorOpen}
+        preset={editingPreset}
+      />
+      <PresetGallery open={presetGalleryOpen} onOpenChange={setPresetGalleryOpen} />
     </StepContainer>
   );
 }

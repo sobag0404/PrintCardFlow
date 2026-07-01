@@ -114,7 +114,7 @@ export function HelpDialog() {
                 <b className="text-foreground">Material</b> — материал из пресета (Флис, Сатин…).
               </li>
               <li>
-                <b className="text-foreground">Category</b> — категория (ОДЛ, ПДШ, ОДН…).
+                <b className="text-foreground">Category</b> — категория товара (Одеяло, Подушка, Одиночный…).
               </li>
               <li>
                 <b className="text-foreground">IP</b> — IP-код (БТ, МА…). Опционален; если пуст — сегмент опускается.

@@ -28,7 +28,7 @@ export interface Preset {
   description: string;
   /** Material value written into SKU (e.g. "Флис", "Сатин", "Хлопок"). */
   material: string;
-  /** Category code written into SKU (e.g. "ОДЛ", "ПДШ"). */
+  /** Product/category value written into SKU (e.g. "Одеяло", "Подушка"). */
   category: string;
   /** Sizes produced by this preset. */
   sizes: SizeEntry[];

@@ -70,6 +70,7 @@ interface WizardState {
   setIpCodeBulk: (artIds: string[], ip: IpCode | null) => void;
   toggleSelect: (id: string) => void;
   selectAll: (value: boolean) => void;
+  selectMany: (ids: string[], value: boolean) => void;
   invertSelection: () => void;
   duplicateArt: (id: string) => void;
   duplicateArtsBulk: (ids: string[]) => void;
@@ -133,6 +134,20 @@ function artsEqual(a: Art[], b: Art[]): boolean {
 
 const MAX_HISTORY = 50;
 
+function refreshBuiltInPresets(presets: Preset[] = BUILTIN_PRESETS): Preset[] {
+  const builtinById = new Map(BUILTIN_PRESETS.map((p) => [p.id, p]));
+  const seen = new Set<string>();
+  const refreshed = presets.map((preset) => {
+    seen.add(preset.id);
+    const builtin = builtinById.get(preset.id);
+    return builtin ? { ...builtin } : preset;
+  });
+  for (const builtin of BUILTIN_PRESETS) {
+    if (!seen.has(builtin.id)) refreshed.push({ ...builtin });
+  }
+  return refreshed;
+}
+
 export const useWizardStore = create<WizardState>()(
   persist(
     (set, get) => {
@@ -160,7 +175,7 @@ export const useWizardStore = create<WizardState>()(
         project: null,
 
         arts: [],
-        presets: BUILTIN_PRESETS,
+        presets: refreshBuiltInPresets(),
 
         past: [],
         future: [],
@@ -278,6 +293,15 @@ export const useWizardStore = create<WizardState>()(
           set({ arts: get().arts.map((a) => ({ ...a, selected: value })) });
         },
 
+        selectMany: (ids, value) => {
+          const idSet = new Set(ids);
+          set({
+            arts: get().arts.map((a) =>
+              idSet.has(a.id) ? { ...a, selected: value } : a,
+            ),
+          });
+        },
+
         invertSelection: () => {
           set({ arts: get().arts.map((a) => ({ ...a, selected: !a.selected })) });
         },
@@ -344,7 +368,8 @@ export const useWizardStore = create<WizardState>()(
 
         setPresets: (presets) => {
           const { arts } = get();
-          set({ arts: recomputeArtSkus(arts, presets), presets });
+          const next = refreshBuiltInPresets(presets);
+          set({ arts: recomputeArtSkus(arts, next), presets: next });
         },
 
         upsertPreset: (preset) => {
@@ -442,6 +467,22 @@ export const useWizardStore = create<WizardState>()(
         maxReachedStep: s.maxReachedStep,
         recentPresetIds: s.recentPresetIds,
       }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<WizardState>;
+        const presets = refreshBuiltInPresets(
+          persistedState.presets ?? current.presets,
+        );
+        const arts = recomputeArtSkus(persistedState.arts ?? current.arts, presets);
+        return {
+          ...current,
+          ...persistedState,
+          presets,
+          arts,
+          past: [],
+          future: [],
+          toasts: [],
+        } as WizardState;
+      },
     },
   ),
 );

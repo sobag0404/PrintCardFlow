@@ -326,7 +326,7 @@ export function PresetEditor({ open, onOpenChange, preset }: PresetEditorProps) 
                 id="preset-category"
                 value={draft.category}
                 onChange={(e) => update({ category: e.target.value })}
-                placeholder="ОДЛ, ПДШ, ОДН…"
+                placeholder="Одеяло, Подушка, Одиночный…"
                 className="pcf-mono"
               />
             </div>

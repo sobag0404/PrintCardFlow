@@ -46,7 +46,7 @@ function MiniStat({
 export function StepScan() {
   const arts = useWizardStore((s) => s.arts);
   const toggleSelect = useWizardStore((s) => s.toggleSelect);
-  const selectAll = useWizardStore((s) => s.selectAll);
+  const selectMany = useWizardStore((s) => s.selectMany);
   const invertSelection = useWizardStore((s) => s.invertSelection);
   const removeArt = useWizardStore((s) => s.removeArt);
   const removeSelected = useWizardStore((s) => s.removeSelected);
@@ -61,12 +61,13 @@ export function StepScan() {
   }, [arts, query]);
 
   const selectedCount = arts.filter((a) => a.selected).length;
+  const visibleSelectedCount = filtered.filter((a) => a.selected).length;
   const allVisibleSelected = filtered.length > 0 && filtered.every((a) => a.selected);
+  const visibleSelectionState =
+    allVisibleSelected ? true : visibleSelectedCount > 0 ? "indeterminate" : false;
 
   const selectVisible = (value: boolean) => {
-    for (const a of filtered) {
-      if (a.selected !== value) toggleSelect(a.id);
-    }
+    selectMany(filtered.map((a) => a.id), value);
   };
 
   const onRemoveSelected = () => {
@@ -159,6 +160,12 @@ export function StepScan() {
       <div className="rounded-xl border bg-card/40">
         <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <ListChecks className="size-3.5" />
+          <Checkbox
+            checked={visibleSelectionState}
+            onCheckedChange={(checked) => selectVisible(checked === true)}
+            aria-label="Выбрать все видимые арты"
+            className="data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
+          />
           Список артов
           <Badge variant="secondary" className="ml-auto">
             {filtered.length} {pluralRu(filtered.length, ["арт", "арта", "артов"])}

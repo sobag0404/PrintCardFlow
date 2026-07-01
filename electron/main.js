@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require("electron")
 const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const http = require("http");
 const net = require("net");
 
@@ -41,16 +41,10 @@ function stopNextServer() {
   if (!pid) return;
 
   if (process.platform === "win32") {
-    spawn("powershell.exe", [
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      `Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue`,
-    ], {
+    spawnSync("taskkill.exe", ["/PID", String(pid), "/T", "/F"], {
       windowsHide: true,
       stdio: "ignore",
-    }).on("error", () => {});
+    });
     return;
   }
 
@@ -186,6 +180,7 @@ function createWindow() {
       `).catch(() => {});
     });
   }
+  mainWindow.on("close", () => { stopNextServer(); });
   mainWindow.on("closed", () => { mainWindow = null; });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://") || url.startsWith("http://")) shell.openExternal(url);
