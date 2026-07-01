@@ -24,6 +24,7 @@
 - Added process-tree shutdown for the embedded Next server on app close / quit (`taskkill /T /F` on Windows).
 - Embedded Next server now starts under packaged Electron with `ELECTRON_RUN_AS_NODE=1`.
 - Added NSIS custom install/uninstall hooks to terminate `PrintCardFlow.exe` before install/uninstall.
+- Fixed uninstall hook placement: process termination now runs in `customUnInit` and `customRemoveFiles` before file removal.
 - Enabled `deleteAppDataOnUninstall` so uninstall removes app data.
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 
