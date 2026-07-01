@@ -14,6 +14,7 @@ const debugServerLogs = isDev || process.env.PRINTCARDFLOW_SERVER_LOGS === "1";
 if (!isDev) {
   app.commandLine.appendSwitch("disable-component-update");
   app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion,HardwareMediaKeyHandling,MediaRouter");
+  app.commandLine.appendSwitch("num-raster-threads", "1");
   if (!enableAutoUpdater) app.commandLine.appendSwitch("disable-background-networking");
 }
 

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { AppHeader } from "@/components/shared/app-header";
 import { AppFooter } from "@/components/shared/app-footer";
 import { ToastStack } from "@/components/shared/toast-stack";
@@ -87,6 +87,7 @@ export default function Home() {
   };
 
   return (
+    <MotionConfig reducedMotion={lowPower ? "always" : "user"}>
     <div className="relative flex min-h-screen flex-col">
       {/* Aurora backdrop — fixed, low z-index, behind everything. */}
       <div
@@ -125,5 +126,6 @@ export default function Home() {
       <AppFooter />
       <ToastStack />
     </div>
+    </MotionConfig>
   );
 }

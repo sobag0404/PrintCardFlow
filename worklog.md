@@ -33,6 +33,7 @@
 - Added desktop low-power mode: disables heavy decorative animations/backdrop blur, removes toast interval timers, limits embedded Next server V8/threadpool usage, disables automatic updater/background network activity unless explicitly enabled.
 - Disabled Prisma query logging and embedded Next stdout/stderr capture in packaged production unless debug logging is explicitly enabled.
 - Added production Electron rendering low-power enforcement: injected CSS disables animations, transitions, aurora backdrop, and backdrop filters.
+- Added global Framer reduced-motion config in desktop low-power mode and limited Chromium raster threads to reduce renderer/GPU idle load.
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 
 ## Project Status Assessment (2026-06-18)
