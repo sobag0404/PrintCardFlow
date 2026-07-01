@@ -98,7 +98,7 @@ async function startNextServer() {
 
   const port = await getFreePort();
   appUrl = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, NODE_ENV: "production", PORT: String(port), HOSTNAME: "127.0.0.1", DATABASE_URL: `file:${getDbPath()}` };
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: "1", NODE_ENV: "production", PORT: String(port), HOSTNAME: "127.0.0.1", DATABASE_URL: `file:${getDbPath()}` };
 
   await new Promise((resolve, reject) => {
     nextServer = spawn(process.execPath, [serverFile], { cwd: standaloneDir, env, stdio: ["ignore", "pipe", "pipe"] });
