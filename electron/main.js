@@ -9,6 +9,7 @@ const net = require("net");
 
 const isDev = process.env.NODE_ENV === "development";
 const enableAutoUpdater = !isDev && process.env.PRINTCARDFLOW_AUTO_UPDATE === "1";
+const debugServerLogs = isDev || process.env.PRINTCARDFLOW_SERVER_LOGS === "1";
 
 if (!isDev) {
   app.commandLine.appendSwitch("disable-component-update");
@@ -124,9 +125,15 @@ async function startNextServer() {
   };
 
   await new Promise((resolve, reject) => {
-    nextServer = spawn(process.execPath, ["--max-old-space-size=384", "--max-semi-space-size=8", serverFile], { cwd: standaloneDir, env, stdio: ["ignore", "pipe", "pipe"] });
-    nextServer.stdout.on("data", (d) => console.log(`[next] ${d.toString().trim()}`));
-    nextServer.stderr.on("data", (d) => console.error(`[next] ${d.toString().trim()}`));
+    nextServer = spawn(process.execPath, ["--max-old-space-size=384", "--max-semi-space-size=8", serverFile], {
+      cwd: standaloneDir,
+      env,
+      stdio: debugServerLogs ? ["ignore", "pipe", "pipe"] : "ignore",
+    });
+    if (debugServerLogs) {
+      nextServer.stdout.on("data", (d) => console.log(`[next] ${d.toString().trim()}`));
+      nextServer.stderr.on("data", (d) => console.error(`[next] ${d.toString().trim()}`));
+    }
     nextServer.on("error", reject);
     nextServer.on("exit", (code, signal) => {
       nextServer = null;

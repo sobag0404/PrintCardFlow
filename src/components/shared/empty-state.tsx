@@ -4,6 +4,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { type LucideIcon } from "lucide-react";
+import { useLowPowerMode } from "@/lib/performance-mode";
 import { cn } from "@/lib/utils";
 
 export type EmptyAccent = "amber" | "rose" | "pink" | "fuchsia" | "emerald" | "violet";
@@ -36,6 +37,7 @@ export function EmptyState({
   bare = false,
   className,
 }: EmptyStateProps) {
+  const lowPower = useLowPowerMode();
   const Wrapper = bare ? "div" : motion.div;
   return (
     <Wrapper
@@ -57,8 +59,8 @@ export function EmptyState({
             "pcf-empty-icon grid size-14 place-items-center rounded-xl",
             ACCENT_CLASSES[accent],
           )}
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          animate={lowPower ? undefined : { y: [0, -4, 0] }}
+          transition={lowPower ? undefined : { duration: 3, repeat: Infinity, ease: "easeInOut" }}
         >
           <Icon className="size-6" />
         </motion.div>

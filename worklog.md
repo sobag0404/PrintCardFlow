@@ -31,6 +31,7 @@
 - Added `SetOutPath "$TEMP"` before removing `$INSTDIR` so the root install directory can be deleted.
 - Enabled `deleteAppDataOnUninstall` so uninstall removes app data.
 - Added desktop low-power mode: disables heavy decorative animations/backdrop blur, removes toast interval timers, limits embedded Next server V8/threadpool usage, disables automatic updater/background network activity unless explicitly enabled.
+- Disabled Prisma query logging and embedded Next stdout/stderr capture in packaged production unless debug logging is explicitly enabled.
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 
 ## Project Status Assessment (2026-06-18)
