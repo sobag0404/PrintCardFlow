@@ -118,14 +118,14 @@
     "npmRebuild": false,
     "files": [
       "electron/**/*",
-      ".next/standalone/**/*",
-      ".next/static/**/*",
-      "public/**/*",
       "prisma/**/*",
       "db/**/*",
       "package.json"
     ],
-    "extraResources": [{ "from": "db", "to": "db" }],
+    "extraResources": [
+      { "from": ".next/standalone", "to": ".next/standalone" },
+      { "from": "db", "to": "db" }
+    ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "icon": "build/icon.ico",

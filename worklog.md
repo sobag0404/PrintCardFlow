@@ -11,6 +11,13 @@
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS, standalone smoke `GET /` + `POST /api/json-export` PASS.
 - Local `npm.cmd run build:electron:win` still fails on this machine because the Electron zip downloaded into local cache is invalid; GitHub Actions remains the authoritative Windows `.exe` build path.
 
+### Installer startup fix (2026-07-01)
+
+- Fixed installed `.exe` startup error `No server: ...resources\app\.next\standalone\server.js`.
+- Packaged `.next/standalone` as an external Electron resource at `resources\.next\standalone`.
+- Electron main now resolves standalone server from multiple locations, including the new external resource path.
+- Local checks after fix: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
+
 ## Project Status Assessment (2026-06-18)
 
 ### Environment Reality vs. Requested State

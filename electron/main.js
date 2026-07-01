@@ -59,9 +59,18 @@ function waitForServer(url, timeoutMs = 15000) {
 }
 
 async function startNextServer() {
-  const standaloneDir = path.join(process.resourcesPath, "app", ".next", "standalone");
+  const standaloneCandidates = [
+    path.join(process.resourcesPath, ".next", "standalone"),
+    path.join(process.resourcesPath, "app", ".next", "standalone"),
+    path.join(app.getAppPath(), ".next", "standalone"),
+  ];
+  const standaloneDir = standaloneCandidates.find((candidate) =>
+    fs.existsSync(path.join(candidate, "server.js")),
+  );
+  if (!standaloneDir) {
+    throw new Error(`No server: ${standaloneCandidates.map((candidate) => path.join(candidate, "server.js")).join(" | ")}`);
+  }
   const serverFile = path.join(standaloneDir, "server.js");
-  if (!fs.existsSync(serverFile)) throw new Error(`No server: ${serverFile}`);
 
   const port = await getFreePort();
   appUrl = `http://127.0.0.1:${port}`;
