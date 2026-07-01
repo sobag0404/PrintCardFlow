@@ -25,6 +25,8 @@
 - Embedded Next server now starts under packaged Electron with `ELECTRON_RUN_AS_NODE=1`.
 - Added NSIS custom install/uninstall hooks to terminate `PrintCardFlow.exe` before install/uninstall.
 - Fixed uninstall hook placement: process termination now runs in `customUnInit` and `customRemoveFiles` before file removal.
+- Switched NSIS process termination from `nsExec` to direct `ExecWait "$SYSDIR\taskkill.exe" /F /T /IM PrintCardFlow.exe`.
+- Added `customCheckAppRunning` so silent uninstall kills the app before Electron Builder's built-in running-process check.
 - Enabled `deleteAppDataOnUninstall` so uninstall removes app data.
 - Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 

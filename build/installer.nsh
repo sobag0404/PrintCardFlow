@@ -1,18 +1,26 @@
+!macro killPrintCardFlow
+  DetailPrint "Stopping PrintCardFlow..."
+  ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM PrintCardFlow.exe'
+  Sleep 1500
+!macroend
+
+!macro customCheckAppRunning
+  !insertmacro killPrintCardFlow
+!macroend
+
 !macro customInit
-  nsExec::ExecToLog 'taskkill /IM "PrintCardFlow.exe" /T /F'
+  !insertmacro killPrintCardFlow
 !macroend
 
 !macro customUnInit
-  nsExec::ExecToLog 'taskkill /IM "PrintCardFlow.exe" /T /F'
-  Sleep 1000
+  !insertmacro killPrintCardFlow
 !macroend
 
 !macro customRemoveFiles
-  nsExec::ExecToLog 'taskkill /IM "PrintCardFlow.exe" /T /F'
-  Sleep 1000
+  !insertmacro killPrintCardFlow
   RMDir /r "$INSTDIR"
 !macroend
 
 !macro customUnInstall
-  nsExec::ExecToLog 'taskkill /IM "PrintCardFlow.exe" /T /F'
+  !insertmacro killPrintCardFlow
 !macroend
