@@ -18,6 +18,14 @@
 - Electron main now resolves standalone server from multiple locations, including the new external resource path.
 - Local checks after fix: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
 
+### Process/uninstall hardening (2026-07-01)
+
+- Added single-instance guard for Electron.
+- Added process-tree shutdown for the embedded Next server on app close / quit (`taskkill /T /F` on Windows).
+- Added NSIS custom install/uninstall hooks to terminate `PrintCardFlow.exe` before install/uninstall.
+- Enabled `deleteAppDataOnUninstall` so uninstall removes app data.
+- Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS.
+
 ## Project Status Assessment (2026-06-18)
 
 ### Environment Reality vs. Requested State

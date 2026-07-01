@@ -8,6 +8,11 @@ const http = require("http");
 const net = require("net");
 
 const isDev = process.env.NODE_ENV === "development";
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
+  app.quit();
+}
 
 // electron-updater (production only, optional)
 let autoUpdater = null;
@@ -18,6 +23,25 @@ if (!isDev) {
 let mainWindow = null;
 let nextServer = null;
 let appUrl = null;
+
+function stopNextServer() {
+  if (!nextServer) return;
+  const pid = nextServer.pid;
+  nextServer = null;
+  if (!pid) return;
+
+  if (process.platform === "win32") {
+    spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+      windowsHide: true,
+      stdio: "ignore",
+    }).on("error", () => {});
+    return;
+  }
+
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {}
+}
 
 function getDbPath() {
   if (isDev) return path.join(process.cwd(), "db", "custom.db");
@@ -82,6 +106,7 @@ async function startNextServer() {
     nextServer.stderr.on("data", (d) => console.error(`[next] ${d.toString().trim()}`));
     nextServer.on("error", reject);
     nextServer.on("exit", (code, signal) => {
+      nextServer = null;
       if (mainWindow) console.error(`[next] exited code=${code} signal=${signal}`);
     });
     waitForServer(appUrl).then(resolve).catch(reject);
@@ -196,8 +221,13 @@ app.whenReady().then(async () => {
   if (!isDev) { try { await startNextServer(); } catch (err) { dialog.showErrorBox("Ошибка запуска", `${err instanceof Error ? err.message : err}`); app.quit(); return; } }
   createWindow();
   if (!isDev) setupAutoUpdater();
+  app.on("second-instance", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  });
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on("window-all-closed", () => { if (nextServer) { nextServer.kill(); nextServer = null; } if (process.platform !== "darwin") app.quit(); });
-app.on("before-quit", () => { if (nextServer) { nextServer.kill(); nextServer = null; } });
+app.on("window-all-closed", () => { stopNextServer(); if (process.platform !== "darwin") app.quit(); });
+app.on("before-quit", () => { stopNextServer(); });
