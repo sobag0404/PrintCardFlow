@@ -136,6 +136,9 @@ export function StepPreview() {
   }, [filteredArts, collapsed]);
 
   const parentRef = React.useRef<HTMLDivElement>(null);
+  // TanStack Virtual returns imperative helpers that React Compiler cannot memoize safely.
+  // This component does not pass those helpers into memoized children.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: flatRows.length,
     getScrollElement: () => parentRef.current,

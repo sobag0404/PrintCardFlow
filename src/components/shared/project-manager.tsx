@@ -104,7 +104,16 @@ export function SaveProjectDialog({
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) setName(project?.name || "Новый проект");
+    if (!open) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setName(project?.name || "Новый проект");
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, project]);
 
   const onSave = async () => {
@@ -203,7 +212,14 @@ export function SavedProjectsCard() {
   }, []);
 
   React.useEffect(() => {
-    void refresh();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void refresh();
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const onLoad = async (id: string, name: string) => {

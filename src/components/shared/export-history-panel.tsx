@@ -113,7 +113,16 @@ export function ExportHistoryPanel() {
   }, []);
 
   React.useEffect(() => {
-    if (open && records.length === 0 && !loading) void refresh();
+    if (!open || records.length > 0 || loading) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void refresh();
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, records.length, loading, refresh]);
 
   const onRedownload = async (r: HistoryRecord) => {

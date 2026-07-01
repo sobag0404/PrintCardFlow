@@ -4,6 +4,8 @@ const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const { spawn } = require("child_process");
+const http = require("http");
+const net = require("net");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -15,24 +17,71 @@ if (!isDev) {
 
 let mainWindow = null;
 let nextServer = null;
+let appUrl = null;
 
 function getDbPath() {
   if (isDev) return path.join(process.cwd(), "db", "custom.db");
   return path.join(app.getPath("userData"), "printcardflow.db");
 }
 
-function startNextServer() {
+function getFreePort() {
   return new Promise((resolve, reject) => {
-    const standaloneDir = path.join(process.resourcesPath, "app", ".next", "standalone");
-    const serverFile = path.join(standaloneDir, "server.js");
-    if (!fs.existsSync(serverFile)) { reject(new Error(`No server: ${serverFile}`)); return; }
-    const env = { ...process.env, NODE_ENV: "production", PORT: "3000", HOSTNAME: "127.0.0.1", DATABASE_URL: `file:${getDbPath()}` };
+    const server = net.createServer();
+    server.unref();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+function waitForServer(url, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const probe = () => {
+      const req = http.get(url, (res) => {
+        res.resume();
+        resolve();
+      });
+      req.on("error", (err) => {
+        if (Date.now() > deadline) {
+          reject(err);
+          return;
+        }
+        setTimeout(probe, 250);
+      });
+      req.setTimeout(1500, () => req.destroy(new Error("server probe timeout")));
+    };
+    probe();
+  });
+}
+
+async function startNextServer() {
+  const standaloneDir = path.join(process.resourcesPath, "app", ".next", "standalone");
+  const serverFile = path.join(standaloneDir, "server.js");
+  if (!fs.existsSync(serverFile)) throw new Error(`No server: ${serverFile}`);
+
+  const port = await getFreePort();
+  appUrl = `http://127.0.0.1:${port}`;
+  const env = { ...process.env, NODE_ENV: "production", PORT: String(port), HOSTNAME: "127.0.0.1", DATABASE_URL: `file:${getDbPath()}` };
+
+  await new Promise((resolve, reject) => {
     nextServer = spawn(process.execPath, [serverFile], { cwd: standaloneDir, env, stdio: ["ignore", "pipe", "pipe"] });
     nextServer.stdout.on("data", (d) => console.log(`[next] ${d.toString().trim()}`));
     nextServer.stderr.on("data", (d) => console.error(`[next] ${d.toString().trim()}`));
     nextServer.on("error", reject);
-    setTimeout(() => resolve(), 3000);
+    nextServer.on("exit", (code, signal) => {
+      if (mainWindow) console.error(`[next] exited code=${code} signal=${signal}`);
+    });
+    waitForServer(appUrl).then(resolve).catch(reject);
   });
+}
+
+function isAllowedAppUrl(url) {
+  if (isDev) return url.startsWith("http://localhost:3000") || url.startsWith("http://127.0.0.1:3000");
+  return !!appUrl && url.startsWith(appUrl);
 }
 
 function createWindow() {
@@ -40,12 +89,18 @@ function createWindow() {
     width: 1400, height: 900, minWidth: 1024, minHeight: 680,
     show: false, backgroundColor: "#0a0a0a", title: "PrintCardFlow",
     icon: path.join(__dirname, "..", "build", "icon.png"),
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false },
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   mainWindow.once("ready-to-show", () => { mainWindow.show(); if (isDev) mainWindow.webContents.openDevTools({ mode: "detach" }); });
   mainWindow.on("closed", () => { mainWindow = null; });
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith("http")) { shell.openExternal(url); return { action: "deny" }; } return { action: "allow" }; });
-  mainWindow.loadURL(isDev ? "http://localhost:3000" : "http://127.0.0.1:3000");
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://") || url.startsWith("http://")) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!isAllowedAppUrl(url)) event.preventDefault();
+  });
+  mainWindow.loadURL(isDev ? "http://localhost:3000" : appUrl);
 }
 
 function buildMenu() {
@@ -99,11 +154,6 @@ ipcMain.handle("save-file", async (event, { defaultName, data, filters }) => {
   if (result.canceled || !result.filePath) return { ok: false, canceled: true };
   try { await fsp.writeFile(result.filePath, Buffer.from(data)); return { ok: true, path: result.filePath }; }
   catch (err) { return { ok: false, error: err instanceof Error ? err.message : "save failed" }; }
-});
-
-ipcMain.handle("read-file", async (event, { path: filePath }) => {
-  try { const buf = await fsp.readFile(filePath); return { ok: true, data: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) }; }
-  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "read failed" }; }
 });
 
 ipcMain.handle("app-info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch, isElectron: true, dbPath: getDbPath(), userDataPath: app.getPath("userData") }));

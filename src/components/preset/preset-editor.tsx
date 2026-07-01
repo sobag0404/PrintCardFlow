@@ -131,10 +131,18 @@ export function PresetEditor({ open, onOpenChange, preset }: PresetEditorProps) 
 
   // Reset draft whenever dialog opens (with new preset or null).
   React.useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setDraft(preset ? { ...preset } : makeNewPreset());
       setErrors({});
-    }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, preset]);
 
   const isBuiltin = React.useMemo(

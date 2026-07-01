@@ -1,5 +1,16 @@
 # PrintCardFlow — Worklog
 
+## Quality/Security Hardening (2026-07-01)
+
+- Removed masked build failures: Next.js no longer ignores TypeScript errors; added `typecheck` script.
+- CI now runs lint + typecheck before Next/Electron build, uses Node 24, and fails if `.exe` artifact is missing.
+- Electron production startup now chooses a free localhost port instead of fixed `3000`, waits for the embedded server readiness, and prevents navigation away from the app URL.
+- Electron renderer hardening: enabled sandbox, removed arbitrary `read-file` IPC from preload/main.
+- Replaced `next/font/google` with system fonts so desktop builds do not depend on Google Fonts network access.
+- Fixed TypeScript response body typings, Electron preload types, ExcelJS compatibility typings, and React lint issues.
+- Local checks: `npm.cmd run lint` PASS, `npm.cmd run typecheck` PASS, `npm.cmd run build:next` PASS, standalone smoke `GET /` + `POST /api/json-export` PASS.
+- Local `npm.cmd run build:electron:win` still fails on this machine because the Electron zip downloaded into local cache is invalid; GitHub Actions remains the authoritative Windows `.exe` build path.
+
 ## Project Status Assessment (2026-06-18)
 
 ### Environment Reality vs. Requested State

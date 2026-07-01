@@ -6,7 +6,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   pickFolder: () => ipcRenderer.invoke("pick-folder"),
   pickFile: (filters, title) => ipcRenderer.invoke("pick-file", { filters, title }),
   saveFile: (defaultName, data, filters) => ipcRenderer.invoke("save-file", { defaultName, data, filters }),
-  readFile: (filePath) => ipcRenderer.invoke("read-file", { path: filePath }),
   appInfo: () => ipcRenderer.invoke("app-info"),
   ensureDb: () => ipcRenderer.invoke("ensure-db"),
 });

@@ -201,7 +201,7 @@ export async function parseExcelBuffer(
 }
 
 /** Header style: dark fill, white bold text. */
-const HEADER_FILL: Partial<ExcelJS.Fill> = {
+const HEADER_FILL: ExcelJS.FillPattern = {
   type: "pattern",
   pattern: "solid",
   fgColor: { argb: "FF1F2937" }, // gray-800

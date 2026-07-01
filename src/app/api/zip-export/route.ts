@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       includeManifest,
     });
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",

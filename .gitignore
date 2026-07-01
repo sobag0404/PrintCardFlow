@@ -19,6 +19,7 @@ node_modules
 
 # production build output
 /dist/
+/download/run-*/
 # but keep app icons in build/
 !/build
 /build/*

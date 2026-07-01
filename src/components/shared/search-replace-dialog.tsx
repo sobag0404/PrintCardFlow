@@ -35,13 +35,21 @@ export function SearchReplaceDialog({ open, onOpenChange }: SearchReplaceDialogP
   const [exactMatch, setExactMatch] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open) {
+    if (open) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setSearch("");
       setReplace("");
       setScope("all");
       setCaseSensitive(false);
       setExactMatch(false);
-    }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   // Compute live preview (first 5 matches + total count).

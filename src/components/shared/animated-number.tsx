@@ -15,15 +15,21 @@ export function useCountUp(value: number, duration = 600): number {
 
   React.useEffect(() => {
     if (prefersReducedMotion()) {
-      setDisplay(value);
-      fromRef.current = value;
-      return;
+      rafRef.current = requestAnimationFrame(() => {
+        setDisplay(value);
+        fromRef.current = value;
+      });
+      return () => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
     }
     const from = fromRef.current;
     const to = value;
     if (from === to) {
-      setDisplay(to);
-      return;
+      rafRef.current = requestAnimationFrame(() => setDisplay(to));
+      return () => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
     }
     const start = performance.now();
     const tick = (now: number) => {

@@ -16,10 +16,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+function subscribeMounted() {
+  return () => {};
+}
+
+function getMountedSnapshot() {
+  return true;
+}
+
+function getMountedServerSnapshot() {
+  return false;
+}
+
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  const mounted = React.useSyncExternalStore(
+    subscribeMounted,
+    getMountedSnapshot,
+    getMountedServerSnapshot,
+  );
 
   const current = mounted ? (theme === "system" ? "system" : resolvedTheme) : "dark";
   const isDark = current === "dark" || current === "system";

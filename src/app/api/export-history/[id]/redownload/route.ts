@@ -81,7 +81,7 @@ export async function GET(
           arts,
           presets,
         });
-        return new NextResponse(buf, {
+        return new NextResponse(new Uint8Array(buf), {
           status: 200,
           headers: {
             "Content-Type":
@@ -100,7 +100,7 @@ export async function GET(
           presets,
           includeManifest: record.includeManifest,
         });
-        return new NextResponse(buffer, {
+        return new NextResponse(new Uint8Array(buffer), {
           status: 200,
           headers: {
             "Content-Type": "application/zip",
