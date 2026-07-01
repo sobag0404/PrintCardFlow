@@ -10,6 +10,7 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWizardStore } from "@/lib/store/wizard-store";
 import { STEP_ORDER, type WizardStep } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
+import { useLowPowerMode } from "@/lib/performance-mode";
 
 import { StepStart } from "@/components/wizard/step-start";
 import { StepFolder } from "@/components/wizard/step-folder";
@@ -31,6 +32,7 @@ export default function Home() {
   const step = useWizardStore((s) => s.step);
   const prevStepRef = React.useRef<WizardStep>(step);
   const [direction, setDirection] = React.useState<1 | -1>(1);
+  const lowPower = useLowPowerMode();
 
   React.useEffect(() => {
     const prevIdx = STEP_ORDER.indexOf(prevStepRef.current);
@@ -98,20 +100,26 @@ export default function Home() {
         className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-3 sm:px-6"
         aria-live="polite"
       >
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={step}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.28, ease: "easeOut" }}
-            className={cn("flex flex-1 flex-col")}
-          >
+        {lowPower ? (
+          <div key={step} className={cn("flex flex-1 flex-col")}>
             <CurrentStep />
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={step}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className={cn("flex flex-1 flex-col")}
+            >
+              <CurrentStep />
+            </motion.div>
+          </AnimatePresence>
+        )}
       </main>
 
       <AppFooter />

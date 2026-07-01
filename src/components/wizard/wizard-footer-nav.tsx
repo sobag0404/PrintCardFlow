@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { useWizardStore } from "@/lib/store/wizard-store";
 import { cn } from "@/lib/utils";
+import { useLowPowerMode } from "@/lib/performance-mode";
 
 export interface WizardFooterNavProps {
   nextLabel?: string;
@@ -92,6 +93,15 @@ export function StepContainer({
   children: React.ReactNode;
   className?: string;
 }) {
+  const lowPower = useLowPowerMode();
+  if (lowPower) {
+    return (
+      <div className={cn("flex flex-1 flex-col gap-5 py-5", className)}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

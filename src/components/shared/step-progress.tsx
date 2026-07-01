@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { STEP_ORDER, STEP_LABELS, type WizardStep } from "@/lib/domain/types";
 import { useWizardStore } from "@/lib/store/wizard-store";
 import { cn } from "@/lib/utils";
+import { useLowPowerMode } from "@/lib/performance-mode";
 
 function stepState(
   idx: number,
@@ -23,6 +24,7 @@ export function StepProgress() {
   const step = useWizardStore((s) => s.step);
   const maxReached = useWizardStore((s) => s.maxReachedStep);
   const setStep = useWizardStore((s) => s.setStep);
+  const lowPower = useLowPowerMode();
 
   const currentIdx = STEP_ORDER.indexOf(step);
 
@@ -66,7 +68,7 @@ export function StepProgress() {
                   ) : (
                     <span>{idx + 1}</span>
                   )}
-                  {isCurrent && (
+                  {isCurrent && !lowPower && (
                     <motion.span
                       layoutId="step-current-ring"
                       className="absolute -inset-1 rounded-full ring-2 ring-foreground/30"

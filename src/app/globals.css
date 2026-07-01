@@ -506,3 +506,20 @@
     animation: none !important;
   }
 }
+
+html[data-performance-mode="low-power"] .pcf-aurora,
+html[data-performance-mode="low-power"] .pcf-empty-icon,
+html[data-performance-mode="low-power"] .pcf-shimmer-bg::after {
+  animation: none !important;
+}
+
+html[data-performance-mode="low-power"] .pcf-aurora {
+  filter: none;
+  opacity: 0.45;
+}
+
+html[data-performance-mode="low-power"] .glass,
+html[data-performance-mode="low-power"] .glass-strong {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

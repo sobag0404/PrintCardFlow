@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { isLowPowerMode } from "@/lib/performance-mode";
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -14,22 +15,16 @@ export function useCountUp(value: number, duration = 600): number {
   const rafRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
-    if (prefersReducedMotion()) {
-      rafRef.current = requestAnimationFrame(() => {
-        setDisplay(value);
-        fromRef.current = value;
-      });
-      return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      };
+    if (prefersReducedMotion() || isLowPowerMode()) {
+      fromRef.current = value;
+      const timer = window.setTimeout(() => setDisplay(value), 0);
+      return () => window.clearTimeout(timer);
     }
     const from = fromRef.current;
     const to = value;
     if (from === to) {
-      rafRef.current = requestAnimationFrame(() => setDisplay(to));
-      return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      };
+      const timer = window.setTimeout(() => setDisplay(to), 0);
+      return () => window.clearTimeout(timer);
     }
     const start = performance.now();
     const tick = (now: number) => {

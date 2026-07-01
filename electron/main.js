@@ -8,6 +8,14 @@ const http = require("http");
 const net = require("net");
 
 const isDev = process.env.NODE_ENV === "development";
+const enableAutoUpdater = !isDev && process.env.PRINTCARDFLOW_AUTO_UPDATE === "1";
+
+if (!isDev) {
+  app.commandLine.appendSwitch("disable-component-update");
+  app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion,HardwareMediaKeyHandling,MediaRouter");
+  if (!enableAutoUpdater) app.commandLine.appendSwitch("disable-background-networking");
+}
+
 const gotLock = app.requestSingleInstanceLock();
 
 if (!gotLock) {
@@ -16,7 +24,7 @@ if (!gotLock) {
 
 // electron-updater (production only, optional)
 let autoUpdater = null;
-if (!isDev) {
+if (enableAutoUpdater) {
   try { autoUpdater = require("electron-updater").autoUpdater; } catch {}
 }
 
@@ -31,7 +39,13 @@ function stopNextServer() {
   if (!pid) return;
 
   if (process.platform === "win32") {
-    spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+    spawn("powershell.exe", [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      `Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue`,
+    ], {
       windowsHide: true,
       stdio: "ignore",
     }).on("error", () => {});
@@ -98,10 +112,19 @@ async function startNextServer() {
 
   const port = await getFreePort();
   appUrl = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, ELECTRON_RUN_AS_NODE: "1", NODE_ENV: "production", PORT: String(port), HOSTNAME: "127.0.0.1", DATABASE_URL: `file:${getDbPath()}` };
+  const env = {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+    NODE_ENV: "production",
+    NEXT_TELEMETRY_DISABLED: "1",
+    UV_THREADPOOL_SIZE: "2",
+    PORT: String(port),
+    HOSTNAME: "127.0.0.1",
+    DATABASE_URL: `file:${getDbPath()}`,
+  };
 
   await new Promise((resolve, reject) => {
-    nextServer = spawn(process.execPath, [serverFile], { cwd: standaloneDir, env, stdio: ["ignore", "pipe", "pipe"] });
+    nextServer = spawn(process.execPath, ["--max-old-space-size=384", "--max-semi-space-size=8", serverFile], { cwd: standaloneDir, env, stdio: ["ignore", "pipe", "pipe"] });
     nextServer.stdout.on("data", (d) => console.log(`[next] ${d.toString().trim()}`));
     nextServer.stderr.on("data", (d) => console.error(`[next] ${d.toString().trim()}`));
     nextServer.on("error", reject);
@@ -123,7 +146,16 @@ function createWindow() {
     width: 1400, height: 900, minWidth: 1024, minHeight: 680,
     show: false, backgroundColor: "#0a0a0a", title: "PrintCardFlow",
     icon: path.join(__dirname, "..", "build", "icon.png"),
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: true,
+      devTools: isDev,
+      spellcheck: false,
+      v8CacheOptions: "code",
+    },
   });
   mainWindow.once("ready-to-show", () => { mainWindow.show(); if (isDev) mainWindow.webContents.openDevTools({ mode: "detach" }); });
   mainWindow.on("closed", () => { mainWindow = null; });
@@ -220,7 +252,7 @@ app.whenReady().then(async () => {
   buildMenu();
   if (!isDev) { try { await startNextServer(); } catch (err) { dialog.showErrorBox("Ошибка запуска", `${err instanceof Error ? err.message : err}`); app.quit(); return; } }
   createWindow();
-  if (!isDev) setupAutoUpdater();
+  if (enableAutoUpdater) setupAutoUpdater();
   app.on("second-instance", () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();

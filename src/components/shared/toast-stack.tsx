@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useWizardStore, type ToastEntry } from "@/lib/store/wizard-store";
 import { cn } from "@/lib/utils";
+import { useLowPowerMode } from "@/lib/performance-mode";
 
 const TOAST_DURATION = 4000;
 
@@ -46,21 +47,7 @@ function ToastCard({ toast }: { toast: ToastEntry }) {
   const dismiss = useWizardStore((s) => s.dismissToast);
   const cfg = VARIANT_CONFIG[toast.variant];
   const Icon = cfg.icon;
-  const [paused, setPaused] = React.useState(false);
-  const [progress, setProgress] = React.useState(100);
-
-  React.useEffect(() => {
-    if (paused) return;
-    const start = Date.now();
-    const initial = progress;
-    const tick = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const next = Math.max(0, initial - (elapsed / TOAST_DURATION) * 100);
-      setProgress(next);
-      if (next <= 0) clearInterval(tick);
-    }, 50);
-    return () => clearInterval(tick);
-  }, [paused, progress]);
+  const lowPower = useLowPowerMode();
 
   return (
     <motion.div
@@ -73,8 +60,6 @@ function ToastCard({ toast }: { toast: ToastEntry }) {
         "glass-strong pointer-events-auto relative w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-background/95 shadow-xl",
         cfg.border,
       )}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       role="alert"
       aria-live="polite"
     >
@@ -100,8 +85,12 @@ function ToastCard({ toast }: { toast: ToastEntry }) {
       {/* Countdown bar */}
       <div className="h-0.5 w-full bg-muted/40">
         <div
-          className={cn("h-full origin-left", cfg.iconColor, "bg-current opacity-60")}
-          style={{ transform: `scaleX(${progress / 100})` }}
+          className={cn(
+            "h-full origin-left bg-current opacity-60",
+            cfg.iconColor,
+            !lowPower && "animate-[pcf-toast-progress_linear_forwards]",
+          )}
+          style={{ animationDuration: `${TOAST_DURATION}ms` }}
         />
       </div>
     </motion.div>

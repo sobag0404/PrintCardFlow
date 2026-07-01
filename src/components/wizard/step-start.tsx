@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useWizardStore } from "@/lib/store/wizard-store";
 import { BUILTIN_PRESETS } from "@/lib/domain/presets";
 import { SavedProjectsCard } from "@/components/shared/project-manager";
+import { useLowPowerMode } from "@/lib/performance-mode";
 import { StepContainer } from "./wizard-footer-nav";
 
 const FEATURES = [
@@ -52,6 +53,7 @@ export function StepStart() {
   const setStep = useWizardStore((s) => s.setStep);
   const project = useWizardStore((s) => s.project);
   const arts = useWizardStore((s) => s.arts);
+  const lowPower = useLowPowerMode();
 
   const hasProject = !!project && arts.length > 0;
 
@@ -72,12 +74,14 @@ export function StepStart() {
             className="pcf-glow relative mb-6 grid size-20 place-items-center rounded-3xl bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-rose-500/30"
           >
             <Sparkles className="size-9" />
-            <motion.span
-              aria-hidden
-              className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-fuchsia-500/40 to-amber-500/40 blur-2xl"
-              animate={{ opacity: [0.5, 0.85, 0.5], scale: [1, 1.05, 1] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            />
+            {!lowPower && (
+              <motion.span
+                aria-hidden
+                className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-fuchsia-500/40 to-amber-500/40 blur-2xl"
+                animate={{ opacity: [0.5, 0.85, 0.5], scale: [1, 1.05, 1] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
           </motion.div>
 
           <motion.h1

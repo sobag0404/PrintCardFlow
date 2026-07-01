@@ -32,10 +32,13 @@ interface ElectronAppInfo {
   [key: string]: unknown;
 }
 
+type ElectronPerformanceMode = "balanced" | "low-power";
+
 declare global {
   interface Window {
     electronAPI?: {
       isElectron: true;
+      performanceMode?: ElectronPerformanceMode;
       scanFolder: (
         basePath: string,
         count?: number,
